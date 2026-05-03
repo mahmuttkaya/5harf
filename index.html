@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>5harf</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#002147">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="5harf">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -326,8 +332,12 @@ header{
 .pw-price-sub{font-size:.72rem;color:var(--muted);margin-top:3px}
 .pw-price-amount{font-family:"IBM Plex Mono",monospace;font-size:1.5rem;font-weight:700;color:var(--text)}
 .pw-price-once{font-size:.65rem;color:var(--muted);text-align:right;margin-top:2px}
+.pw-price-old{font-family:"IBM Plex Mono",monospace;font-size:.9rem;font-weight:700;color:var(--muted);text-decoration:line-through;margin-right:6px}
+.pw-early-badge{display:inline-block;background:var(--present);color:#fff;font-size:.58rem;padding:2px 8px;border-radius:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+.pw-early-note{font-size:.68rem;color:var(--muted);text-align:center;margin-top:-8px}
 .pw-btn{background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:15px;font-family:"DM Sans",sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:opacity .15s;width:100%}
 .pw-btn:hover{opacity:.82}
+.pw-btn-loading{opacity:.6;pointer-events:none}
 .pw-restore{text-align:center;font-size:.7rem;color:var(--muted);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:"DM Sans",sans-serif}
 </style>
 </head>
@@ -967,6 +977,121 @@ document.getElementById('help-modal').addEventListener('click',e=>{
 });
 
 
+// ── GOOGLE PLAY BILLING ─────────────────────────────────────────
+// Ürün ID'si: Play Console'da tanımlayacağın SKU ile eşleşmeli
+const PREMIUM_SKU = '5harf_premium';
+
+// TWA içinde mi çalışıyor?
+function isInTWA(){
+  return document.referrer.includes('android-app://') ||
+         navigator.userAgent.includes('wv') ||
+         window.getDigitalGoodsService !== undefined;
+}
+
+let dgService = null;
+
+async function initBilling(){
+  if(!isInTWA()) return; // Web'de çalışıyorsa atla
+  try {
+    if('getDigitalGoodsService' in window){
+      dgService = await window.getDigitalGoodsService('https://play.google.com/billing');
+    }
+  } catch(e){
+    console.warn('Play Billing init hatası:', e);
+  }
+}
+
+async function purchasePremium(){
+  const btn = document.getElementById('pw-main-btn');
+  if(btn){ btn.textContent = 'Yükleniyor…'; btn.classList.add('pw-btn-loading'); }
+
+  // TWA / Play Store içindeyse gerçek IAP
+  if(isInTWA() && dgService){
+    try {
+      // Ürün detaylarını al
+      const details = await dgService.getDetails([PREMIUM_SKU]);
+      if(!details || details.length === 0) throw new Error('Ürün bulunamadı');
+
+      // PaymentRequest ile ödeme başlat
+      const paymentMethod = {
+        supportedMethods: 'https://play.google.com/billing',
+        data: { sku: PREMIUM_SKU }
+      };
+      const pr = new PaymentRequest([paymentMethod], {
+        total: { label: '5harf Premium', amount: { currency: 'TRY', value: '69' } }
+      });
+      const paymentResponse = await pr.show();
+
+      // Sunucu tarafı doğrulama (production'da backend'e gönder)
+      // Şimdilik token'ı acknowledge et
+      await paymentResponse.complete('success');
+      await dgService.acknowledge(paymentResponse.details.token, 'onetime');
+
+      // Başarılı — premium'u aç
+      localStorage.setItem('5h_premium','1');
+      closePaywall();
+      _premiumActivated();
+    } catch(e){
+      console.error('Satın alma hatası:', e);
+      if(e.name !== 'AbortError'){
+        alert('Satın alma sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+      if(btn){ btn.textContent = '₺69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
+    }
+    return;
+  }
+
+  // Web / test ortamı — geliştirme modu simülasyonu
+  if(window.location.hostname === 'localhost' || window.location.hostname.includes('github.io')){
+    setTimeout(()=>{
+      localStorage.setItem('5h_premium','1');
+      closePaywall();
+      _premiumActivated();
+    }, 800);
+    return;
+  }
+
+  // Ne TWA ne de geliştirme — kullanıcıya yönlendir
+  alert('Bu özellik yalnızca Google Play uygulaması üzerinden satın alınabilir.');
+  if(btn){ btn.textContent = '₺69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
+}
+
+async function restorePurchase(){
+  if(isPremium()){
+    closePaywall();
+    alert('Satın almanız zaten aktif. ✓');
+    return;
+  }
+
+  // TWA içindeyse Play'den kontrol et
+  if(isInTWA() && dgService){
+    try {
+      const existing = await dgService.listPurchases();
+      const hasPremium = existing.some(p => p.itemId === PREMIUM_SKU);
+      if(hasPremium){
+        localStorage.setItem('5h_premium','1');
+        closePaywall();
+        _premiumActivated();
+        return;
+      }
+    } catch(e){
+      console.error('Restore hatası:', e);
+    }
+  }
+  alert('Aktif bir satın alma bulunamadı.');
+}
+
+function _premiumActivated(){
+  if(typeof currentInner !== 'undefined' && currentInner === 'history') renderHistory();
+  else renderList();
+  // Kısa kutlama bildirimi
+  const toast = document.createElement('div');
+  toast.textContent = '🎉 Premium aktif! Tüm içeriklere erişebilirsiniz.';
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--correct);color:#fff;padding:12px 20px;border-radius:8px;font-size:.82rem;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.2);white-space:nowrap';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 3500);
+}
+
 // ── PAYWALL ─────────────────────────────────────────────────────
 function openPaywall(titleText, descText){
   if(titleText) document.getElementById('pw-title').textContent = titleText;
@@ -975,23 +1100,8 @@ function openPaywall(titleText, descText){
 }
 function closePaywall(){
   document.getElementById('paywall-modal').classList.remove('open');
-}
-function purchasePremium(){
-  if(confirm('5harf Premium — ₺129 tek seferlik ödeme. Devam edilsin mi?')){
-    localStorage.setItem('5h_premium','1');
-    closePaywall();
-    if(typeof currentInner !== 'undefined' && currentInner === 'history') renderHistory();
-    else renderList();
-    alert('🎉 Premium aktif! Tüm içeriklere erişebilirsiniz.');
-  }
-}
-function restorePurchase(){
-  if(isPremium()){
-    closePaywall();
-    alert('Satın almanız zaten aktif.');
-  } else {
-    alert('Aktif bir satın alma bulunamadı.');
-  }
+  const btn = document.getElementById('pw-main-btn');
+  if(btn){ btn.textContent = '₺69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
 }
 document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('paywall-modal').addEventListener('click', function(e){
@@ -1001,6 +1111,16 @@ document.addEventListener('DOMContentLoaded', function(){
 
 splash();
 checkFirstLaunch();
+initBilling(); // Google Play Billing başlat
+
+// ── SERVICE WORKER ──────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('SW kayıtlı:', reg.scope))
+      .catch(err => console.warn('SW hatası:', err));
+  });
+}
 </script>
 
 <!-- PAYWALL MODAL -->
@@ -1016,17 +1136,22 @@ checkFirstLaunch();
       <div class="pw-feat"><span class="pw-feat-icon">&#x1F4CA;</span><span>Detaylı istatistikler</span></div>
       <div class="pw-feat"><span class="pw-feat-icon">&#x2705;</span><span>Tek seferlik ödeme, ömür boyu erişim</span></div>
     </div>
+    <div style="text-align:center"><span class="pw-early-badge">⚡ Erken Erişim Fiyatı</span></div>
     <div class="pw-price-box">
       <div>
         <div class="pw-price-label">5harf Premium</div>
         <div class="pw-price-sub">Tek seferlik &mdash; sonsuza kadar</div>
       </div>
-      <div>
-        <div class="pw-price-amount">&#x20BA;129</div>
+      <div style="text-align:right">
+        <div>
+          <span class="pw-price-old">&#x20BA;99</span>
+          <span class="pw-price-amount">&#x20BA;69</span>
+        </div>
         <div class="pw-price-once">bir kerelik</div>
       </div>
     </div>
-    <button class="pw-btn" onclick="purchasePremium()">&#x20BA;129 ile Premium Al</button>
+    <div class="pw-early-note">Erken erişim fiyatı — yakında ₺99 olacak</div>
+    <button class="pw-btn" id="pw-main-btn" onclick="purchasePremium()">&#x20BA;69 ile Premium Al</button>
     <button class="pw-restore" onclick="restorePurchase()">Satın almayı geri yükle</button>
   </div>
 </div>
