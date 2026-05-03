@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>5harf</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #f5f0e8;
+  --text:    #002147;
+  --correct: #355e5b;
+  --present: #b7616c;
+  --absent:  #8a8a8a;
+  --border:  #c8c0b4;
+  --tbd:     #5a5450;
+  --key-bg:  #d4cdc4;
+  --muted:   #7a736a;
+  --accent:  #b7616c;
+  --surface: #faf7f2;
+  --invalid: #800020;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:"DM Sans",sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center}
+
+/* ── SPLASH ── */
+#splash{
+  position:fixed;inset:0;z-index:200;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;
+  transition:opacity .8s cubic-bezier(.4,0,.2,1);
+}
+#splash.out{opacity:0;pointer-events:none}
+.s-logo{display:flex;gap:12px}
+.s-tile{
+  width:66px;height:66px;border:2px solid var(--border);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:1.8rem;font-weight:700;
+  opacity:0;transform:translateY(22px);
+  transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);
+}
+.s-tile.in{opacity:1;transform:translateY(0)}
+.s-tile.green.in{background:var(--correct);border-color:var(--correct);color:#fff}
+.s-tag{
+  font-size:.68rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-weight:300;
+  opacity:0;transform:translateY(8px);transition:opacity .7s ease,transform .7s ease;
+}
+.s-tag.in{opacity:1;transform:translateY(0)}
+
+/* ── APP ── */
+#app{
+  width:100%;max-width:480px;height:100%;
+  display:flex;flex-direction:column;
+  opacity:0;transition:opacity .7s ease .1s;
+}
+#app.in{opacity:1}
+
+/* ── HEADER ── */
+header{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  padding:12px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;gap:8px;
+}
+.h-logo{display:flex;gap:4px;cursor:pointer;justify-self:start}
+.h-tile{
+  width:28px;height:28px;border:2px solid var(--border);border-radius:2px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:.75rem;font-weight:700;
+}
+.h-tile.g{background:var(--correct);border-color:var(--correct);color:#fff}
+.h-nav{display:flex;gap:6px;align-items:center;justify-self:center}
+.nav-btn{
+  padding:6px 13px;border-radius:3px;font-size:.7rem;font-weight:500;letter-spacing:.04em;
+  cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted);
+  font-family:"DM Sans",sans-serif;transition:all .15s;
+}
+.nav-btn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.h-icons{display:flex;gap:6px;align-items:center;justify-self:end}
+.stats-btn{
+  width:30px;height:30px;border:1.5px solid var(--border);border-radius:3px;
+  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:all .15s;
+}
+.stats-btn:hover{border-color:var(--text);color:var(--text)}
+.stats-btn svg{width:15px;height:15px;fill:currentColor}
+
+/* ── SCREENS ── */
+.screen{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden;width:100%}
+.screen.hidden{display:none}
+
+/* ── GAME AREA ── */
+.game-wrap{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:space-between;padding:16px 12px 10px;width:100%;overflow:hidden;
+}
+.grid{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.row{display:flex;gap:6px}
+.tile{
+  width:58px;height:58px;display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:1.5rem;font-weight:700;
+  text-transform:uppercase;border:2px solid var(--border);border-radius:2px;
+  transform-origin:center;will-change:transform;transition:border-color .1s;
+}
+.tile[data-s="tbd"]{border-color:var(--tbd);color:var(--text)}
+.tile[data-s="correct"]{background:var(--correct);border-color:var(--correct);color:#fff}
+.tile[data-s="present"]{background:var(--present);border-color:var(--present);color:#fff}
+.tile[data-s="absent"]{background:var(--absent);border-color:var(--absent);color:#fff}
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+.tile.pop{animation:pop .1s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.tile.invalid{animation:shake .4s ease;border-color:var(--invalid)!important;color:var(--invalid)!important}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-18px)}70%{transform:translateY(-8px)}}
+.tile.bounce{animation:bounce .55s ease}
+
+/* ── KEYBOARD ── */
+.kb{display:flex;flex-direction:column;gap:7px;width:100%;flex-shrink:0;padding:0 2px}
+.kb-row{display:flex;gap:5px;justify-content:center}
+.key{
+  height:54px;flex:1;max-width:40px;
+  border:none;border-radius:5px;
+  background:var(--key-bg);color:var(--text);
+  font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:700;
+  cursor:pointer;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s,transform .08s,filter .12s;
+  user-select:none;-webkit-user-select:none;
+  box-shadow:0 2px 0 rgba(0,0,0,.12);
+}
+.key:active{transform:scale(.93);box-shadow:none}
+.key.wide{max-width:62px;font-size:.62rem;letter-spacing:-.01em}
+.key[data-s="correct"]{background:var(--correct);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.key[data-s="present"]{background:var(--present);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.key[data-s="absent"]{background:#aaa49e;color:#fff}
+
+/* ── İÇ SEKMELER ── */
+.inner-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);flex-shrink:0}
+.inner-tab{
+  flex:1;padding:10px 0;font-size:.72rem;font-weight:500;letter-spacing:.04em;
+  font-family:"DM Sans",sans-serif;background:transparent;border:none;
+  border-bottom:2.5px solid transparent;margin-bottom:-1.5px;
+  color:var(--muted);cursor:pointer;transition:all .15s;
+}
+.inner-tab.active{color:var(--text);border-bottom-color:var(--text)}
+
+/* ── GEÇMİŞ KART ── */
+.hist-card{
+  aspect-ratio:1;border-radius:5px;border:1.5px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;background:var(--bg);transition:all .15s;
+}
+.hist-card:hover{border-color:var(--text);transform:scale(1.04)}
+.hist-card.won{background:var(--correct);border-color:var(--correct);color:#fff}
+.hist-card.lost{background:var(--present);border-color:var(--present);color:#fff}
+.hist-card.unplayed{background:var(--bg)}
+.hist-date{font-family:"IBM Plex Mono",monospace;font-size:.62rem;font-weight:700;line-height:1.2;text-align:center}
+.hist-card.won .hist-date{color:#fff}
+.hist-card.lost .hist-date{color:#fff}
+.hist-card.unplayed .hist-date{color:var(--text)}
+.hist-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5}
+
+/* ── ARŞİV LİSTE ── */
+.arch-list-wrap{
+  flex:1;width:100%;overflow-y:auto;padding:14px 14px 20px;
+  display:flex;flex-direction:column;
+}
+.arch-header{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);
+}
+.free-badge{
+  background:var(--correct);color:#fff;
+  font-size:.6rem;padding:2px 9px;border-radius:10px;letter-spacing:.04em;
+}
+.arch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.arch-card{
+  aspect-ratio:1;border-radius:5px;border:1.5px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer;background:var(--bg);transition:all .15s;
+}
+.arch-card:hover:not(.locked){border-color:var(--text);transform:scale(1.04)}
+.arch-card.locked{opacity:.38;cursor:default}
+.arch-card.won{background:var(--correct);border-color:var(--correct);color:#fff}
+.arch-card.lost{background:var(--absent);border-color:var(--absent);color:#fff}
+.arch-num{font-family:"IBM Plex Mono",monospace;font-size:.6rem;color:var(--muted)}
+.arch-card.won .arch-num,.arch-card.lost .arch-num{color:rgba(255,255,255,.7)}
+.arch-status{font-size:.85rem}
+.arch-lock{font-size:.7rem}
+
+/* ── ARŞİV OYUN HEADER ── */
+.arch-game-header{
+  width:100%;padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.back-btn{
+  font-size:.72rem;color:var(--muted);cursor:pointer;
+  padding:5px 10px;border:1.5px solid var(--border);border-radius:3px;
+  background:transparent;font-family:"DM Sans",sans-serif;transition:all .15s;
+}
+.back-btn:hover{color:var(--text);border-color:var(--muted)}
+.arch-label{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--muted)}
+
+/* ── DRAWER ── */
+#drawer{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--surface);border-top:1px solid var(--border);
+  max-height:0;overflow:hidden;
+  transition:max-height .6s cubic-bezier(.16,1,.3,1);
+}
+#drawer.open{max-height:320px}
+.drawer-inner{
+  padding:18px 24px 28px;max-width:480px;margin:0 auto;
+  display:flex;flex-direction:column;gap:10px;
+}
+.d-handle{width:32px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 4px}
+.d-label{font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--muted);letter-spacing:.08em}
+.d-meta{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.d-word{font-family:"DM Serif Display",serif;font-style:italic;font-size:1.85rem;letter-spacing:.06em;line-height:1}
+.d-meaning{
+  font-size:.87rem;line-height:1.7;font-weight:300;font-style:italic;
+  padding-left:12px;border-left:2px solid var(--accent);color:var(--text);
+}
+.d-actions{display:flex;gap:8px;padding-top:2px;flex-wrap:wrap}
+.btn-p{
+  background:var(--text);color:var(--bg);border:none;border-radius:3px;
+  padding:10px 20px;font-family:"DM Sans",sans-serif;font-size:.72rem;
+  font-weight:500;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;
+  transition:opacity .15s;
+}
+.btn-p:hover{opacity:.78}
+.btn-p.rose{background:var(--accent)}
+.btn-g{
+  background:transparent;color:var(--muted);border:1.5px solid var(--border);
+  border-radius:3px;padding:10px 14px;font-family:"DM Sans",sans-serif;
+  font-size:.72rem;cursor:pointer;transition:all .15s;
+}
+.btn-g:hover{border-color:var(--muted);color:var(--text)}
+
+/* ── İSTATİSTİK MODAL ── */
+#stats-modal{
+  position:fixed;inset:0;z-index:150;
+  background:rgba(0,33,71,.45);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+#stats-modal.open{display:flex}
+.stats-box{
+  background:var(--surface);border-radius:8px;width:100%;max-width:360px;
+  padding:28px 24px 24px;display:flex;flex-direction:column;gap:20px;
+  box-shadow:0 24px 60px rgba(0,0,0,.25);
+}
+.stats-title{
+  font-family:"DM Serif Display",serif;font-style:italic;
+  font-size:1.4rem;color:var(--text);text-align:center;
+}
+.stats-row{display:flex;justify-content:space-around;gap:8px}
+.stat-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.stat-num{font-family:"IBM Plex Mono",monospace;font-size:1.8rem;font-weight:700;color:var(--text);text-align:center;display:block;width:100%}
+.stat-lbl{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;display:block;width:100%}
+.dist-title{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.dist-rows{display:flex;flex-direction:column;gap:5px}
+.dist-row{display:flex;align-items:center;gap:8px}
+.dist-num{font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--muted);width:14px;text-align:right;flex-shrink:0}
+.dist-bar-wrap{flex:1;background:#e8e2d8;border-radius:2px;height:20px;overflow:hidden}
+.dist-bar{height:100%;background:var(--correct);border-radius:2px;min-width:28px;transition:width .5s ease;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.dist-bar span{font-size:.68rem;color:#fff;font-family:"IBM Plex Mono",monospace;font-weight:700}
+.dist-bar.present{background:var(--present)}
+.stats-close{
+  align-self:center;background:var(--text);color:var(--bg);
+  border:none;border-radius:3px;padding:10px 28px;
+  font-family:"DM Sans",sans-serif;font-size:.72rem;font-weight:500;
+  letter-spacing:.07em;text-transform:uppercase;cursor:pointer;
+}
+
+/* ── KURALLAR ── */
+#help-modal{
+  position:fixed;inset:0;z-index:150;
+  background:rgba(0,33,71,.45);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+#help-modal.open{display:flex}
+.help-box{gap:16px}
+.help-body{display:flex;flex-direction:column;gap:12px;font-size:.88rem;line-height:1.6;color:var(--text)}
+.help-body p{margin:0}
+.help-example{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--border)}
+.help-example:last-of-type{border-bottom:none}
+.help-row{display:flex;gap:5px;margin-bottom:2px}
+.h-ex-tile{
+  width:36px;height:36px;border:2px solid var(--border);border-radius:2px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:1rem;font-weight:700;
+}
+.h-ex-tile.correct{background:var(--correct);border-color:var(--correct);color:#fff}
+.h-ex-tile.present{background:var(--present);border-color:var(--present);color:#fff}
+.h-ex-tile.absent{background:var(--absent);border-color:var(--absent);color:#fff}
+.help-rules{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.help-rules li{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;color:var(--muted)}
+.help-rules li::before{content:"—";flex-shrink:0;color:var(--accent)}
+
+@media(max-width:380px){
+  .tile{width:52px;height:52px;font-size:1.35rem}
+  .s-tile{width:58px;height:58px;font-size:1.6rem}
+  .key{height:50px}
+  .key.wide{max-width:56px}
+}
+@media(min-width:420px){
+  .tile{width:62px;height:62px;font-size:1.6rem}
+  .key{height:58px;max-width:43px}
+  .key.wide{max-width:66px}
+}
+
+/* ── PAYWALL MODAL ── */
+#paywall-modal{position:fixed;inset:0;z-index:160;background:rgba(0,33,71,.55);backdrop-filter:blur(5px);display:none;align-items:flex-end;justify-content:center}
+#paywall-modal.open{display:flex}
+.pw-box{background:var(--surface);border-radius:16px 16px 0 0;width:100%;max-width:480px;padding:28px 24px 44px;display:flex;flex-direction:column;gap:16px;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:pwUp .35s cubic-bezier(.16,1,.3,1)}
+@keyframes pwUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.pw-close-row{display:flex;justify-content:flex-end;margin-bottom:-4px}
+.pw-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px 8px;line-height:1}
+.pw-icon{font-size:2rem;text-align:center}
+.pw-title{font-family:"DM Serif Display",serif;font-style:italic;font-size:1.4rem;color:var(--text);text-align:center;line-height:1.2}
+.pw-desc{font-size:.82rem;line-height:1.6;color:var(--muted);text-align:center;font-weight:300}
+.pw-features{background:var(--bg);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:7px}
+.pw-feat{display:flex;align-items:center;gap:9px;font-size:.8rem;color:var(--text)}
+.pw-feat-icon{font-size:.95rem;flex-shrink:0}
+.pw-price-box{border:2px solid var(--text);border-radius:10px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;background:var(--bg)}
+.pw-price-label{font-size:.85rem;font-weight:600;color:var(--text)}
+.pw-price-sub{font-size:.72rem;color:var(--muted);margin-top:3px}
+.pw-price-amount{font-family:"IBM Plex Mono",monospace;font-size:1.5rem;font-weight:700;color:var(--text)}
+.pw-price-once{font-size:.65rem;color:var(--muted);text-align:right;margin-top:2px}
+.pw-btn{background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:15px;font-family:"DM Sans",sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:opacity .15s;width:100%}
+.pw-btn:hover{opacity:.82}
+.pw-restore{text-align:center;font-size:.7rem;color:var(--muted);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:"DM Sans",sans-serif}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="s-logo">
+    <div class="s-tile green">5</div>
+    <div class="s-tile">H</div>
+    <div class="s-tile">A</div>
+    <div class="s-tile">R</div>
+    <div class="s-tile">F</div>
+  </div>
+  <div class="s-tag">Türkçe kelime oyunu</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="h-logo" onclick="switchNav('daily')">
+      <div class="h-tile g">5</div>
+      <div class="h-tile">H</div>
+      <div class="h-tile">A</div>
+      <div class="h-tile">R</div>
+      <div class="h-tile">F</div>
+    </div>
+    <div class="h-nav">
+      <button class="nav-btn active" id="nav-daily"   onclick="switchNav('daily')">Günlük</button>
+      <button class="nav-btn"        id="nav-archive" onclick="switchNav('archive')">Arşiv</button>
+    </div>
+    <div class="h-icons">
+      <button class="stats-btn" onclick="openStats()" title="İstatistikler">
+        <svg viewBox="0 0 16 16">
+          <rect x="1" y="9" width="3" height="6" rx=".5"/>
+          <rect x="6" y="5" width="3" height="10" rx=".5"/>
+          <rect x="11" y="2" width="3" height="13" rx=".5"/>
+        </svg>
+      </button>
+      <button class="stats-btn" onclick="openHelp()" title="Nasıl oynanır">
+        <svg viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"/>
+          <path d="M6 6.2c0-1.1.9-2 2-2s2 .9 2 2c0 .9-.5 1.4-1.2 1.9C8.1 8.6 8 9 8 9.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="8" cy="11.5" r=".8" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- GÜNLÜK -->
+  <div id="screen-daily" class="screen">
+    <div class="game-wrap">
+      <div class="grid" id="grid-daily"></div>
+      <div class="kb"   id="kb-daily"></div>
+    </div>
+  </div>
+
+  <!-- ARŞİV -->
+  <div id="screen-archive" class="screen hidden">
+    <!-- Liste (Geçmiş + Arşiv iç sekmeli) -->
+    <div id="arch-list-wrap" class="arch-list-wrap">
+      <!-- İç sekmeler -->
+      <div class="inner-tabs">
+        <button class="inner-tab active" id="itab-history" onclick="switchInner('history')">Geçmiş</button>
+        <button class="inner-tab"        id="itab-archive" onclick="switchInner('archive')">Arşiv</button>
+      </div>
+
+      <!-- Geçmiş grid -->
+      <div id="hist-section">
+        <div class="arch-header" style="margin-top:12px">
+          <span>Geçmiş günler</span>
+        </div>
+        <div class="arch-grid" id="hist-grid"></div>
+      </div>
+
+      <!-- Arşiv grid -->
+      <div id="arch-section" style="display:none">
+        <div class="arch-header" style="margin-top:12px">
+          <span>Arşiv — 130 bölüm</span>
+          <span class="free-badge">İlk 30 ücretsiz</span>
+        </div>
+        <div class="arch-grid" id="arch-grid"></div>
+      </div>
+    </div>
+
+    <!-- Oyun (arşiv veya geçmiş) -->
+    <div id="arch-game-wrap" style="flex:1;display:none;flex-direction:column;width:100%;overflow:hidden">
+      <div class="arch-game-header">
+        <button class="back-btn" id="back-btn-label" onclick="backToList()">← Arşiv</button>
+        <span class="arch-label" id="arch-label"></span>
+      </div>
+      <div class="game-wrap">
+        <div class="grid" id="grid-archive"></div>
+        <div class="kb"   id="kb-archive"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER -->
+<div id="drawer">
+  <div class="drawer-inner">
+    <div class="d-handle"></div>
+    <div class="d-label" id="d-label"></div>
+    <div>
+      <div class="d-meta" id="d-meta"></div>
+      <div class="d-word" id="d-word"></div>
+    </div>
+    <div class="d-meaning" id="d-meaning"></div>
+    <div class="d-actions" id="d-actions"></div>
+  </div>
+</div>
+
+<!-- İSTATİSTİK MODAL -->
+<div id="stats-modal">
+  <div class="stats-box">
+    <div class="stats-title">İstatistikler</div>
+    <div class="stats-row" id="stats-numbers"></div>
+    <div>
+      <div class="dist-title">Tahmin dağılımı</div>
+      <div class="dist-rows" id="stats-dist"></div>
+    </div>
+    <button class="stats-close" onclick="closeStats()">Kapat</button>
+  </div>
+</div>
+
+<!-- KURALLAR MODAL -->
+<div id="help-modal">
+  <div class="stats-box help-box">
+    <div class="stats-title">Nasıl Oynanır?</div>
+    <div class="help-body">
+      <p>5 harfli gizli kelimeyi <strong>6 tahminde</strong> bul.</p>
+      <div class="help-example">
+        <div class="help-row">
+          <div class="h-ex-tile correct">K</div>
+          <div class="h-ex-tile">A</div>
+          <div class="h-ex-tile">L</div>
+          <div class="h-ex-tile">E</div>
+          <div class="h-ex-tile">M</div>
+        </div>
+        <p><strong>K</strong> harfi doğru yerde.</p>
+      </div>
+      <div class="help-example">
+        <div class="help-row">
+          <div class="h-ex-tile">D</div>
+          <div class="h-ex-tile present">E</div>
+          <div class="h-ex-tile">N</div>
+          <div class="h-ex-tile">İ</div>
+          <div class="h-ex-tile">Z</div>
+        </div>
+        <p><strong>E</strong> kelimede var ama yanlış yerde.</p>
+      </div>
+      <div class="help-example">
+        <div class="help-row">
+          <div class="h-ex-tile">S</div>
+          <div class="h-ex-tile">A</div>
+          <div class="h-ex-tile absent">B</div>
+          <div class="h-ex-tile">A</div>
+          <div class="h-ex-tile">H</div>
+        </div>
+        <p><strong>B</strong> kelimede hiç yok.</p>
+      </div>
+      <ul class="help-rules">
+        <li>Her tahmin gerçek bir Türkçe kelime olmalı.</li>
+        <li>Günlük kelime her gece <strong>00:00'da</strong> değişir.</li>
+      </ul>
+    </div>
+    <button class="stats-close" onclick="closeHelp()">Anladım</button>
+  </div>
+</div>
+
+<script>
+function isPremium(){
+  return localStorage.getItem('5h_premium') === '1';
+}
+
+const VALID   = new Set(["RAPOR", "ENAYİ", "İTHAL", "ÖGELE", "SEDAD", "BİTİP", "MERMİ", "ÇELİP", "ÇUVAL", "YAMAÇ", "KARŞI", "HODRİ", "YAFES", "GICIR", "YATIK", "TAŞIT", "HİSAR", "SOYAD", "DOLAŞ", "ERDAL", "TURNA", "MONTE", "GÜRDE", "KEŞİŞ", "CAHİL", "SATIH", "BÜTÜN", "DENEY", "ÖLÇÜL", "TOPÇU", "CAZLI", "ÇİNER", "YAKIŞ", "DERYA", "ÖZKUL", "SABİH", "BÜZÜK", "EKELE", "MEREK", "UYUCU", "TOMAR", "YÜKLÜ", "SEZİŞ", "ŞOSET", "İFRAT", "PESLE", "DONCU", "BAŞER", "ERSİZ", "MANAT", "LEMİS", "SEVİN", "ŞARKİ", "ÖZTEK", "FOKUS", "UÇSUZ", "ALAZA", "BOYCU", "CİHAR", "KÜFRE", "RAUNT", "ECMEL", "UÇMAN", "TÜRKÜ", "KURCU", "TAHTA", "BAKAM", "DÜNÜR", "FEYİZ", "FIŞIR", "ÖREME", "NAMAZ", "ESBAP", "MATİZ", "TALİH", "ESPRİ", "VARİL", "BANIP", "GÜLEN", "KÖPÜK", "NESRE", "SALİM", "ÖPÜCÜ", "IRACI", "USMAN", "VARIP", "HAŞIL", "İRSAL", "BATAN", "CARTA", "PEYDA", "YAĞLA", "DİLİM", "İZLEM", "İNFAZ", "AŞMAK", "KINAY", "BUTON", "SOYUL", "YENAL", "TALİB", "SAMAN", "CEBİN", "KASKO", "TANGO", "ELBET", "ÖNSEL", "HAVRA", "KOPUŞ", "HAPİS", "HAZAN", "KALIN", "BIZIR", "BÜKÜÇ", "FLAMA", "BAKIN", "SELEK", "KÜLCÜ", "KONUT", "ÇOĞUM", "KAZIN", "AYSAL", "SÖKÜP", "DÖLÜT", "SACLA", "TACIN", "ÖĞÜDE", "SAVUR", "TOPUK", "DİKİZ", "İÇERİ", "FANLI", "TAMİK", "TORUN", "TEĞİZ", "KAİME", "ŞAPKA", "HARTA", "NAHIR", "NEZİH", "BETÜL", "PUSAN", "TEVEK", "İRİCE", "ENSEL", "ÜMİDİ", "SÜRRE", "TRÜĞÜ", "MELİH", "GÜPÜR", "SAYCI", "EVLEŞ", "YAYIK", "SONAY", "ARACI", "YANCI", "ŞUTLA", "HALEF", "KUPÜR", "ÖPESİ", "KÜLLE", "MENAF", "ASABİ", "İRİLE", "REMLİ", "KAKAÇ", "ALIĞI", "CESUR", "SERİN", "ELLET", "ERVAH", "UÇMAZ", "AKKOR", "AŞLAN", "KALSİ", "SADRA", "TINIL", "GÜDÜŞ", "ÇİPSİ", "PAYAN", "KARIL", "FASİT", "İKİLİ", "AYAĞA", "DEVİN", "ABANİ", "ÇİMLE", "HAFİT", "SEZEK", "KOÇLU", "OLASI", "EKLİK", "BİLEK", "TÜTSÜ", "ÇALKI", "TENHA", "FELAH", "LAFIZ", "MELUL", "KOCAL", "KASIP", "ŞEDİT", "ÇARSI", "HADIM", "ÇIFIT", "SAİDE", "MAKUL", "KOYUT", "JAPON", "SAVAK", "ŞAKIT", "BEKSİ", "İKSİR", "BAZAL", "CELAL", "TARAT", "YİTİP", "VARİS", "SERME", "PİYES", "OPTİK", "KUYAŞ", "TAVİL", "GUTLU", "ALAKA", "ESHOT", "OTLUK", "AŞKIN", "KEFİR", "SALEP", "MATUH", "SİSLİ", "ÇATTI", "VEZİN", "HAMEL", "ÇINLA", "HATÇI", "MECAL", "ABADİ", "GÜNSÜ", "AŞILA", "TUĞCU", "ARALA", "ZİVER", "DÖKÜŞ", "İĞDIR", "SIVAT", "İSHAL", "DİNAR", "KIÇÇI", "ÖZCÜK", "AHMAK", "NISFI", "KETEN", "SALİH", "ANİLE", "BATIP", "MİTOS", "KÜREN", "SAĞSI", "GEOİT", "TAYGA", "YOLUP", "LOKMA", "CİRİM", "MUCİR", "SÜBYE", "ZÜKAM", "HARAP", "TEALİ", "OYMAK", "KAPIL", "HÜSAM", "GÖÇÜL", "ASMAZ", "AYRIK", "NESİÇ", "AMUDA", "HIŞIM", "BIKIL", "SATMA", "YANIL", "KIĞLI", "NEYSİ", "ATAŞE", "BEZLE", "DÖVEN", "KİREÇ", "SAPAN", "TINTI", "KATLA", "KOMUT", "TÜMLE", "ASICI", "EŞREF", "ATTIK", "CAYIP", "ORAĞI", "TABUR", "PASÇI", "KURAN", "IRKÇA", "GEVEN", "TURRE", "KALLA", "BUĞUR", "LAVAŞ", "KODCU", "AĞACI", "GAYDA", "BİLİM", "ZÜMRA", "PLATİ", "MEFUL", "ÜZDÜK", "NEFSİ", "TAŞER", "DEŞİL", "POPÇU", "TUTUM", "CUNDA", "GÜFTE", "ÇÖREK", "SASON", "ENSAR", "LAMEL", "AKLAT", "EKMEK", "GIDIK", "HÜCRE", "ISLAK", "SIDKI", "OYDUK", "SOYCA", "YANLI", "TEPEN", "AKSLI", "GEREÇ", "ZIMNİ", "LEĞEN", "ARGÜN", "ÇAVUŞ", "TÜZÜN", "AFFET", "GEYİK", "KOŞAM", "MUSON", "ONİKS", "TAÇLI", "YİYİM", "ULUCU", "KOPUL", "KAFES", "OYDAŞ", "PUSUL", "LAFÇI", "GAZAL", "TUĞAL", "HÜSNÜ", "DUYLU", "SARIL", "YAZIN", "SAÇIP", "SÜDRE", "YAMAN", "BOHÇA", "OYLUM", "TIPKI", "BOYAT", "VİTRİ", "TOLLU", "AĞILI", "KOLAJ", "YAPMA", "ATELE", "TONGA", "KAVGA", "OLEİK", "TUMBA", "GÜDÜK", "GENZİ", "TAVAS", "YAŞIT", "DARBI", "ZORCU", "GARBA", "KIRAÇ", "KOYCU", "SIRLA", "SÜFLİ", "MİLAS", "SIHHİ", "CEZAİ", "MİLLİ", "NATIR", "MABUT", "ADLIK", "RÜŞDE", "BABÜR", "ZUMCU", "RUHÇU", "KEŞAP", "BAŞÇA", "KROŞE", "HAMAK", "ARTIK", "ALTAN", "PORTE", "FAYDA", "LAHUT", "TALAS", "HURUÇ", "SIĞIP", "GEMCİ", "SİKKE", "TALAN", "MEVUT", "DÜZME", "LİBAS", "ÇÖKME", "BADIÇ", "KOŞUL", "SALIM", "MALCA", "MEVLA", "ÖLÇEK", "ARKÇI", "MEHAZ", "KIYYE", "KUTRU", "BAYCA", "EKÜRİ", "TAKAN", "MUTÇU", "KEŞFE", "LİMCİ", "DİLET", "FAUNA", "TIBBA", "KALIK", "GRİLİ", "ÜÇTAŞ", "RAMSI", "SAKLA", "ARLIK", "ÖPEME", "ŞUBAT", "ALEVİ", "VURUL", "DOZLA", "KULAÇ", "YAYIŞ", "SİKME", "SERÇE", "EVDEŞ", "ÇÖZÜL", "BEKÇE", "KIŞÇI", "KETON", "TALAŞ", "NİTEL", "ŞİMAL", "HELİS", "AŞTIR", "DEMCİ", "FİNLİ", "TANLI", "ÇÖZEN", "VERDİ", "BESİN", "ÜYECE", "MOTİF", "NİKAH", "NEFİY", "USANÇ", "CİRMİ", "SALTA", "NATUK", "KÖKÇÜ", "BİZON", "BİLEŞ", "KOTLU", "İSTET", "GİDER", "BUZCU", "MİTİL", "İŞLEN", "DİRİM", "HIRLI", "SUZAN", "EVSAF", "KUTAN", "BOALA", "TIKAN", "SALUR", "BÜYÜT", "KALCE", "MATBU", "ÇEKSİ", "CİNCİ", "BİNİŞ", "GÜDEK", "CİNSİ", "DIŞLA", "ZÜLFİ", "MEDEN", "KOLEJ", "AYTÜL", "AHALİ", "DOYUM", "KATİP", "HEZEN", "HİLAT", "MATAH", "ALEYH", "SADME", "ÇOKÇA", "İNDİR", "KÖPÜR", "DAMLA", "NOTER", "SIĞCI", "SOKUM", "NÜANS", "HAYRA", "İKRAR", "KANIR", "ESESİ", "KAYRA", "HAMİL", "HIFZI", "KISMI", "YARIP", "VEFAT", "DELEN", "PESEK", "ASLEN", "DEMEÇ", "TUTKU", "ATİLİ", "ZÜPPE", "TEPİN", "UMMAN", "BAŞLA", "ŞAHİN", "İKALA", "SUNTA", "KEŞKİ", "KAVCI", "GİDEN", "EHLİN", "VELET", "SUSMA", "GÜÇLÜ", "ELEJİ", "AMELE", "AKÇIL", "PALAN", "PERMİ", "FİLCİ", "DOKUN", "BİTKİ", "İNESİ", "SAKİN", "ÖĞREN", "VURAL", "CİVAN", "SOLUP", "TANSI", "TEZLİ", "BAMBU", "KAVUR", "TAZİZ", "HALUK", "KUSMA", "HELİK", "SÖKME", "İRİLİ", "ELKIZ", "HOŞUR", "POLİP", "BETON", "ÇAPIL", "ÇİRİŞ", "KİNLİ", "SETLİ", "KÜTÇE", "AŞIRT", "TADAR", "ANTLA", "SICAK", "PAPAK", "SEVDA", "AİDAT", "ASTIM", "KÜFLÜ", "NARSI", "TEYBE", "KUŞKU", "SAHİL", "EMDİK", "İNELİ", "HATUN", "TORUM", "AKLEN", "RAKİT", "SÜZME", "GÜMÜŞ", "OYALI", "HANDE", "EROİN", "HASIM", "HİCVE", "KALSI", "ÜSTÜN", "ASİYE", "SEBZE", "İKDAM", "CEHİL", "TİRİT", "YAPIT", "PUSMA", "AZERİ", "SOSÇU", "HARCA", "BELER", "KÜRÜN", "NESRİ", "VARSI", "BAYLA", "ZENLİ", "MUŞTU", "SUNAN", "TONOZ", "EDİLE", "RUSÇA", "MUKUS", "LAHOS", "İNSAN", "ESLEN", "YALPA", "SAYLI", "NEBAT", "DAVSI", "ALMAŞ", "VOLTA", "ÇALLI", "AHİZE", "KOPUZ", "BEKLE", "CENAP", "KEPİR", "ÇAPAR", "KUTRA", "REŞME", "VİRÜS", "MAHVI", "TİRAT", "KAYNI", "İFRAĞ", "REBİA", "DAYAK", "SAKAL", "ŞAYİA", "BELİN", "PİŞİP", "ALGAN", "BOLLA", "AZOİK", "TOLAY", "AHCAR", "İHRAM", "OYLAN", "DENİL", "HAŞİR", "ZIBIN", "EZİCİ", "DULLU", "BAKİR", "TURLA", "COŞMA", "LANET", "BACIN", "BULUŞ", "UFAĞA", "DÜZÜL", "TEDİP", "HAKLI", "ZAMLI", "YAPIL", "KARMA", "MİDYE", "DURUŞ", "YENGE", "TESRİ", "ATIĞA", "UÇUCU", "BOLLU", "ERGEN", "MENSİ", "GÜRSÜ", "OYNAT", "İNSEL", "KOVMA", "AKTÖR", "SONUÇ", "KAVAF", "AVCIK", "GEMRE", "NİCEL", "TOPAK", "YİĞİT", "ETSEL", "NALSI", "BAÇLI", "TANIM", "ARTAN", "BANCI", "TARSI", "İDMAN", "EŞELE", "OYACA", "VASIL", "TINAN", "KEŞÇİ", "ŞAKÇI", "KAPUT", "FIRLA", "TEYBİ", "ŞAKAK", "IRIBA", "RESEL", "BAYAN", "VIZIR", "ÇİMME", "ASHAB", "KESBE", "İNÇLİ", "BUZUL", "SEPET", "NEBİL", "TIRLI", "KISMA", "İPLEN", "CİNAİ", "YASAT", "FANTİ", "BERKE", "BOSNA", "MAJÖR", "GİRAY", "HİNLİ", "EŞLEM", "SELVİ", "HALCE", "POZCU", "HIYAR", "ÜMÜĞÜ", "EMRİM", "GECİK", "DOLAN", "BALIK", "KÜLTE", "YALIZ", "KOYAK", "GERİM", "SANIK", "YUNAN", "MEZÜR", "KOKUP", "SUSUL", "SİHRİ", "BASÇI", "AĞNAT", "KİNİŞ", "DİLEK", "İDARİ", "PEKÖZ", "ZEMİN", "CAVİT", "ŞAKLI", "SOYUN", "GEÇSİ", "AMMAR", "EŞKİN", "SİLİŞ", "TURCU", "AÇICA", "ÖZŞEN", "VİSKİ", "KOZAN", "SURET", "MADUN", "YÜZSÜ", "SARGI", "ZİRCE", "SİYER", "CİHET", "DÜGAH", "SİMYA", "YÜZÜK", "YÜKÇÜ", "BASAR", "DALSI", "OSKAY", "ALSIZ", "NASIL", "İKLİM", "AZMİM", "BAYIP", "KOKLA", "GENEL", "DİNGE", "BENGİ", "CÜRMÜ", "DURUP", "TORİK", "ASSAL", "PALAZ", "KESBİ", "ÇIKIP", "KATIM", "BİREY", "RASİN", "TÜRSÜ", "HAVAŞ", "GÖLEK", "İLİĞE", "ADAMA", "İLAHİ", "TUĞRA", "KORUK", "BALOZ", "PERKİ", "TURCA", "KONAN", "HAKİR", "MERAL", "ESMEZ", "ÖRKÇÜ", "ASTIK", "İHTAR", "AĞIDI", "KOMŞU", "ABART", "SULHİ", "MİYOM", "KISIM", "DAVCI", "ÇEKLİ", "VİDEO", "TELİN", "ORTAK", "ERKUT", "ABAZA", "MONAT", "SİLLE", "OYLUK", "ZORGU", "HANGİ", "MAÇÇA", "ANELE", "KADEH", "ONSLU", "VARIL", "ÇEKEN", "KERKİ", "KRAVL", "URLAŞ", "GARBI", "KIZMA", "ROKET", "KOKET", "FODUL", "GÜÇÇE", "YİTEN", "FİRAK", "DUALA", "KOPUK", "KANİŞ", "SAÇSI", "TAPMA", "VİTES", "EYLET", "BOŞAL", "BIÇIK", "MİSAK", "SULAN", "ETİĞE", "SİYME", "DÜZEY", "YERİŞ", "KUDUZ", "DENME", "DALAT", "TIKIL", "ÇİLEK", "AMLAT", "ESVAP", "SAFÇI", "İNTAK", "YÜZEY", "SIZMA", "YANIT", "CÜSSE", "ÇEDİK", "KESME", "GÜLÜN", "ÇİÇEK", "ŞEKVA", "SPERM", "KITLI", "ÇEKÇE", "DERİK", "DÜZÜŞ", "TRATA", "DAİRE", "NEVİT", "ATELİ", "KESİK", "DÜZCE", "DİTME", "SOĞUR", "AKSAN", "BARAK", "EĞDİR", "EŞFAK", "UYLAŞ", "RİYAL", "ADLAN", "DUYMA", "SMACI", "AGRAF", "UTSAL", "DURAL", "ALPAK", "KÜRAR", "EVSET", "ÇEBİÇ", "MİYAR", "GEZİL", "KARGO", "NAMIK", "SENEM", "ÖDLEK", "AKLIK", "ÇAVAŞ", "SÜRÜM", "HAVSI", "SOĞUN", "DÜĞÜN", "MADEN", "OYDUR", "SUBAY", "ŞAİBE", "EDESİ", "DULUK", "FLÖRT", "ÖZGÜN", "URBAN", "JÖNCE", "MURAT", "EZİĞE", "AHKAM", "PISAN", "ESHAM", "FIKHA", "EVGİN", "SESLİ", "TİLKİ", "TEMSİ", "TİTİZ", "DURUL", "HAMAL", "SAVSA", "POTÇU", "SIVAN", "BİNCİ", "MAHFE", "KIRMA", "PORNO", "CUNTA", "YORAN", "ABLAŞ", "BÜKEN", "RAHLE", "KAKIP", "MÜBAH", "BEYİN", "KOYUŞ", "TOYCU", "ORMAN", "ÜNLÜK", "MURAD", "KURON", "ÇÖMEN", "TARTI", "BEYLİ", "EŞLEŞ", "DEĞEN", "GERZE", "GÖĞÜM", "LÖKÇÜ", "SEZGİ", "PENSE", "BELEN", "BÜTÇE", "SİMİT", "İNCEL", "ÇOLAK", "PARYA", "YAYLA", "ZUMLU", "SÜKUT", "KAYMA", "CANER", "KOVLA", "ESEME", "BİZAR", "SİRMO", "SAVLI", "ZAĞAR", "COŞUŞ", "İĞDİŞ", "ELLEŞ", "FESLE", "ÇEYİZ", "ŞÖMİZ", "BİNİT", "ÇIRPI", "ARMUZ", "FEYZİ", "YASSI", "DEKOR", "SEÇİŞ", "ARINÇ", "İHSAS", "AKVAM", "İSTİF", "KADİR", "MEŞBU", "KABİN", "TÖRPÜ", "PALAS", "MELAS", "KUDAS", "TABİP", "ZAMAN", "DÖVÜŞ", "TAPIL", "SİİRT", "CİHAZ", "NEHRE", "SAÇIK", "ÇOMAR", "ETSİZ", "ÇİMİL", "NAZIM", "ANİSİ", "TELES", "TIĞLI", "GARCA", "IZGIN", "İSNAT", "EDEBİ", "MUTKİ", "BABAİ", "SEPEK", "TRÜĞE", "YOLAÇ", "KAZAK", "SUBYE", "ŞEREF", "ARDIÇ", "CIBIL", "FANTA", "BALTA", "ÖKTEN", "HİDRA", "KISMİ", "KOŞUŞ", "ETLEN", "MAHİR", "AVUCU", "SANIP", "ALTIN", "ÇIRAK", "CUMBA", "MAŞÇI", "FIRAT", "OLMUŞ", "ANİLİ", "SUÇLA", "TAKIN", "SAHSI", "KIRSI", "FİLAN", "TIRSI", "KARCA", "TONER", "YASAK", "BANJO", "FAGOT", "KEPEK", "MAKSİ", "FALAT", "YEDİR", "KONUL", "FEKLİ", "HACME", "MUCİP", "ACIMA", "İNEĞE", "YÜKÜM", "DAMAR", "MİRAS", "KORAL", "BOZUM", "DAZSI", "KÖMÜŞ", "NÖBET", "RUHLU", "DİREK", "AVUCA", "SAKAR", "BELLİ", "TAŞIN", "ULAĞI", "DEVİT", "TÜPÇÜ", "CIVIT", "UZSUZ", "ARKOZ", "ANKET", "AYDAN", "BESİM", "KOYUL", "BEŞON", "BORCU", "CİZYE", "ASMAK", "HOPLA", "ŞEREN", "DÜŞLE", "SAĞAN", "İLZAM", "EVHAM", "ADESE", "KORNO", "SALSI", "SÜRAT", "BELCİ", "NASİB", "MEYAN", "DİNEN", "DERİP", "KUMAR", "İPEĞE", "PÜRCÜ", "MOHER", "BIRAK", "EFELİ", "ÇİĞDE", "DİBEK", "SAÇAK", "TİSİZ", "KOYNU", "ODLUK", "BEKRİ", "EFSUN", "SALOZ", "İDELİ", "İTİLA", "AZLAN", "BAĞRA", "ÖNSÜZ", "GÖZLÜ", "NEFYİ", "BOZER", "TOPAÇ", "SOKAK", "TOPAZ", "EVCEK", "İLICA", "İNDİS", "DÖVME", "ÖLÇÜM", "AYRAN", "HIRBO", "TEKİT", "HASSI", "HORUL", "KÜTLÜ", "MORTO", "ETENE", "PEDER", "YALAK", "TEPKİ", "ŞAİRE", "LAGAR", "ÖNEZE", "OKTAN", "GAZAP", "RAPÇI", "GEBEŞ", "TURSU", "İLACI", "ÇIĞCI", "ALICI", "BÖNCE", "VİLLA", "BEYNİ", "YILCI", "EPELİ", "TÖZLÜ", "YERME", "TATLI", "DEKÇİ", "MAKAM", "ŞULUK", "LİDER", "SADAK", "KATET", "NURAY", "HUKUK", "ANODU", "TOZSU", "OYNAŞ", "REBAP", "ABECE", "KOMOR", "DİNİP", "ZÜHDÜ", "TÜNEL", "SALÇA", "TINMA", "TENYA", "HASMA", "MALAK", "DOLMA", "BİRLE", "KÜPLÜ", "NAİBE", "KÜBİK", "ÇÜKLÜ", "FECİR", "FALLI", "KUMCU", "ZAĞLI", "VEREM", "ÜŞÜME", "SOLSU", "HOKKA", "GAKLA", "FAKÜL", "FİRUZ", "SEÇAL", "ORÇUN", "KIRLI", "SEVİL", "KEKEÇ", "DAĞSI", "TUTAR", "YENCE", "SHÇEK", "HACİR", "TOLUN", "BAPLA", "BOTAŞ", "YUVAR", "PÜRÜZ", "ZEVAT", "KOKLU", "GÜRÜL", "KIRIT", "AYTEK", "KASIŞ", "FALSO", "PERMA", "ESRİK", "DÜZCÜ", "MUSIR", "İSALE", "KURCA", "REKOR", "GEÇİŞ", "OKTAY", "ÇALGI", "RAİFE", "ÇIDAM", "KAPMA", "EZİNÇ", "TEKSİ", "VATOZ", "ADABA", "KÖYLÜ", "DEFOL", "UMULU", "UTAMA", "ŞİŞİP", "İTEĞİ", "FERDİ", "SIKIP", "YOLSU", "KORLU", "BEZSİ", "FARCA", "BOLAR", "AKŞAM", "TÜNAY", "RAFÇI", "AKYIL", "ÖZTEN", "GÖNCÜ", "HIRLA", "LONGA", "DEDİR", "GÖÇLE", "BAKIP", "VAKFE", "YATÇI", "DÖŞLÜ", "PERON", "GIPTA", "AÇIĞA", "POTUK", "NECEF", "YEDİK", "ZIRIL", "SELMİ", "PALLI", "YENİL", "PİYON", "BARAY", "NEMLİ", "NÜKTE", "SEZAL", "ATALI", "TUMAN", "KAMET", "AYDIN", "PUFLA", "ETTİR", "ZAMLA", "İFLAH", "SANKİ", "TOTAL", "ŞEBEK", "KIYIK", "STEBE", "ZİMMİ", "EGELİ", "TIKIN", "PİŞİM", "ERELİ", "ALTUĞ", "NAKLE", "YÜNCÜ", "HAŞİM", "HİÇÇİ", "SÖKEL", "YELEÇ", "LEHİM", "ERİME", "NETÇİ", "FİBER", "MASLI", "DUYUL", "EVCİK", "NEHYİ", "HACLI", "GÖTLÜ", "TARİK", "BUMİN", "SAĞAL", "SÜNNİ", "NUTUK", "İĞSİZ", "İMREN", "EVLEN", "YORMA", "CAYIR", "DUVAR", "SALSA", "APORT", "ALNIM", "AÇMAK", "YOKLU", "ŞIĞIM", "GÜCÜN", "AKTAN", "NESLİ", "MİRAY", "ÜRÜME", "AMELİ", "KOPMA", "EKSER", "HAKAN", "SÜNGÜ", "HIZLI", "KAMIŞ", "SUSUP", "TUZLU", "KILCI", "SOYUP", "BERKA", "SIZAN", "BARKA", "BENİZ", "KOPİL", "KAĞAN", "SUSUŞ", "HAYRİ", "KUŞÇA", "MOTEL", "KİTÇİ", "ZARTA", "YARAŞ", "HIRCI", "PULUÇ", "VAHLI", "TANIN", "HAZMA", "BIYIK", "KOTAN", "MUKİM", "KOLCU", "PULLU", "ACELE", "DİŞEN", "MUŞLU", "ÖZDAĞ", "YOLCA", "MANTO", "KOLAY", "DEMET", "ORHUN", "ŞUARA", "HUYCA", "SONER", "İNSAF", "ALKAN", "SEHPA", "ÇİZİP", "İMALI", "SAMOA", "NAZCI", "GEÇİM", "KAKAO", "URHAN", "MIRLA", "SİNEM", "FEHVA", "PRESE", "ŞEYCİ", "BOYUT", "ACICA", "NEHYE", "YAĞCA", "MERET", "PEKİŞ", "SOFÇU", "ALDIR", "TÜLLÜ", "URLAN", "SAĞLI", "TATİL", "SALGI", "TÜZÜK", "TANRI", "ANDAÇ", "YAĞIP", "ÇALIŞ", "VAHİT", "ÖRKLÜ", "KÜTİN", "GÖLET", "BİÇİM", "SEYRE", "KAÇÇI", "ANIRT", "SOMUN", "AYICA", "CİNAS", "KASIM", "MELEŞ", "HUMOR", "MOBİL", "SERGİ", "SİLAJ", "EĞLEŞ", "PONJE", "NAFİA", "KIPIR", "YOZCU", "ALGIN", "TRAFO", "İÇYÜZ", "GİRME", "ÜLGEN", "SELİN", "BURAK", "KÜLÇE", "NESİM", "BAYLI", "CEVRE", "BÜRGE", "ÇİRCİ", "ÖZDEK", "YAKMA", "ŞERAN", "PISMA", "ANTÇI", "DEKAR", "PLAKA", "PİLOT", "NEŞRİ", "YEŞER", "TAŞSI", "KIYAN", "FELEK", "ERKAL", "UZAĞI", "IRAĞA", "YEŞİL", "ALTÇI", "DAIMA", "AŞMAZ", "TERİM", "UFALT", "İÇELİ", "ESPAS", "GÖÇEN", "TAYCA", "BENEK", "GÖKSU", "DELİK", "BATİK", "MUDİL", "HİSSE", "KALAY", "ERGÜN", "TIRCI", "YETİR", "BOŞAN", "ARABİ", "ŞAKRA", "MANEN", "BOMLA", "GEMLİ", "HACCI", "PIHTI", "SOMUT", "SEVGİ", "LENTO", "SAVUŞ", "SIĞAN", "ANLAN", "KÜFRÜ", "DÜÇAR", "ÇAĞRI", "CİCİK", "SADİK", "ANLAM", "AHLAF", "BİLİŞ", "DEVLİ", "ÜMMET", "YİYİN", "KİSVE", "TAPAN", "MÜMİN", "ISKAT", "KOPÇA", "ŞIKÇA", "SEKÇİ", "SÖNEN", "DURDU", "HATİF", "BRAVO", "EZACI", "AZABA", "ÇAYIR", "ÇELİK", "AŞKLA", "KEŞKE", "KALAS", "UFAĞI", "İBRET", "ARMAN", "YIKIL", "CEVAP", "ÇÖKEK", "KAVİL", "CENAH", "SİMGE", "POTUR", "ORUCA", "TOYSU", "MALAZ", "OLGUN", "İHATA", "İYECİ", "BUNAN", "ADSIZ", "SAYAR", "VANLI", "SEZİL", "GÜTME", "DEKLİ", "TİPÇİ", "HIRKA", "MEŞUM", "PLASE", "TASAR", "BEBEK", "ÇITTI", "ISILI", "FARCI", "MÖSYÖ", "ARHAN", "HAVLI", "HAZMI", "SATAN", "KUSUL", "TISLA", "KALYA", "UMAMA", "PALTO", "SORTİ", "ALÇAL", "DONUP", "KÜSPE", "ALLIK", "ÖRESİ", "BOBİN", "ÇARLI", "ALKİL", "LAHDİ", "TULUĞ", "SOMAY", "ÇİPİL", "ASASI", "AFSIZ", "AŞIĞI", "SEYEK", "KONYA", "DEMSİ", "EKMİŞ", "KERTE", "SUARE", "YASİN", "ŞAVUL", "FİTÇİ", "STENT", "ORGUN", "BEŞLİ", "PİSLE", "KOÇER", "BEŞİK", "KAPIP", "ÜLKEN", "NUŞİN", "MADAM", "ŞİŞEN", "GİTAR", "LİZÖZ", "DÜŞÜL", "BEKÇİ", "SULUK", "NUYAN", "OVUCU", "SÖVGÜ", "VAKTİ", "EZELİ", "SENLİ", "HAMZA", "EĞESİ", "ÇAPÇI", "AKASI", "REHİN", "SULAK", "ÖZRÜN", "ATACA", "BEĞİN", "TEPİR", "ÇEKİM", "SESLE", "ÇİNCE", "DOLAK", "AZDIR", "İŞEME", "MÜLGA", "SONCA", "FISIL", "İNMEK", "ERİNÇ", "ÇÖKÜP", "MASSI", "MELON", "MUZCA", "HARİR", "BADEM", "METRO", "CEZRE", "SİMLİ", "BİTİR", "KELİK", "FİLUM", "OCAĞA", "HOLLE", "SAKIN", "ZURNA", "ŞEYSİ", "MUCUR", "LEŞÇİ", "GARBİ", "CEZİR", "RÜYET", "MAMUT", "ZACIN", "DULSU", "DÜNCÜ", "BUĞZA", "ORİON", "TOEFL", "ORCAN", "SİSLE", "TÜLÜN", "ÖRGEN", "TAMCI", "EBECE", "DEFÇİ", "HIZAR", "VADET", "BEZİP", "HORLU", "TEKKE", "SINIR", "BEDİR", "İRKİT", "BUYOT", "BENGÜ", "ESMER", "MİSİS", "TEMCİ", "TARDU", "TÖREL", "NAZİR", "VEZNE", "DARAÇ", "GÖZER", "OĞLAK", "YUYAN", "CAVİD", "ORGAN", "ACUBE", "LAPÇI", "SÜMÜK", "KORAY", "KALAK", "BATNI", "TEFEK", "BETER", "ŞAHSI", "BABIM", "KELEŞ", "ÖZKER", "KONUŞ", "ALDAN", "AKGÜN", "FÖNLÜ", "LİZOL", "SEFİL", "ALKIŞ", "SIĞMA", "ÇEKEM", "MERCİ", "TRANS", "ATACI", "TEPME", "OVACA", "FEVRİ", "HÜRSÜ", "HONAZ", "NEVİN", "ŞOVCU", "GELİR", "ENGÜR", "GAYRİ", "DUŞLU", "TİNLİ", "BUZLA", "ARSAL", "SINAİ", "HANSI", "KORUR", "REMİL", "HAYAT", "KIRAN", "MIHLA", "ÇÖĞÜR", "TÜYME", "LADİK", "YAZIL", "ATTIR", "BALAT", "CASUS", "SÜPÜR", "FISTI", "KABIM", "ZÜBDE", "EDEBE", "KESER", "MARUF", "DELAL", "POLEN", "TINCA", "ÇİLLİ", "AMALA", "BEDİİ", "REMZİ", "MESUT", "RENGE", "KALBİ", "KIZAK", "USKUR", "BULGU", "BUĞRA", "LAHDE", "PESSİ", "GİRİL", "KAYIT", "AŞSAL", "HALİL", "KIRAY", "GÜNEŞ", "KORCU", "ESNEK", "VULVA", "MEHEL", "SÜYÜM", "YEMEZ", "İRİSİ", "ŞOKLA", "KAHİL", "ÖCÜCÜ", "IŞIMA", "BÜKÜM", "EMİRE", "DEĞİL", "HAYRI", "SUMAK", "KATLİ", "UKNUM", "TASDİ", "RUMLU", "AKICI", "RÜSVA", "SUSAN", "SOĞUT", "BAĞIL", "NAZCA", "ONALI", "HASPA", "ÇOĞAN", "KADİT", "KAŞAR", "ESRİN", "ZORLU", "MARKE", "PAYAM", "ÖRMEZ", "GALİZ", "EKLER", "MİTLİ", "ERLİK", "SÖVÜŞ", "AZILI", "EĞRİM", "HÜSNE", "FİŞEK", "KALCİ", "SERİK", "TOKÇA", "KEMSİ", "HADSİ", "BAĞRI", "HAMSE", "GÜCÜK", "SAFHA", "KARNI", "EMRİN", "FEVZİ", "TIRAK", "DİLAY", "BADİK", "KUŞÇU", "ARICI", "BOĞUŞ", "KERİM", "JETLİ", "VINLA", "MANAV", "KEYİF", "DİNEK", "ÜRGÜP", "BEDSİ", "SUSAL", "DAVCA", "KİLLE", "ADANA", "ÇANTA", "İNMİŞ", "LANDO", "RUBAİ", "BAZEN", "DONSU", "İZOLE", "ISSIZ", "BEGÜM", "TOKSU", "HAYLİ", "YETEN", "ÇOĞAL", "NASİR", "KEFEK", "YAZIŞ", "DİDER", "KATOT", "YILIŞ", "BALET", "DOBRA", "İŞLEM", "ALDAT", "SABUN", "KORNA", "FURYA", "YÖNCE", "HATIL", "AZDIK", "DUMAN", "ORUCU", "CİMCİ", "ALACI", "HİLAL", "OĞLAN", "OFSET", "MORUK", "ÇAKIŞ", "PİŞTİ", "EKTİK", "KUTSU", "SEÇİK", "VURUŞ", "YOLUK", "ÜTÜCÜ", "İKMAL", "SÖZCÜ", "DARCA", "LÜTFU", "RİNDE", "SALCA", "TECER", "YOMLU", "TİZLİ", "HAYAL", "TEORİ", "ISLAH", "BUKLE", "DALIP", "ESTET", "ÖTEKİ", "YATIR", "ŞAKUL", "ŞAHLI", "KABAR", "YALAT", "HAHAM", "PARSA", "MÖBLE", "TAVUK", "CIVIL", "UDİLE", "DİNLE", "KESEL", "GÖKEV", "VICIR", "TÜMÜR", "KIDEM", "RASAT", "ENEME", "KAÇAR", "ADRES", "İHBAR", "ANEMİ", "CUDAM", "MUMCU", "BORAT", "SİDİK", "DUYUR", "ULUCA", "DİDİP", "KÖFTE", "BÖLÜM", "RÖFLE", "KASTİ", "ORKUN", "ILGAR", "AKÜCÜ", "TOSYA", "GİRİT", "UÇKUR", "SIÇAN", "AKDİN", "SARAÇ", "MÜŞİR", "ROMLU", "FAZLA", "NAÇİZ", "TANCA", "DUBLE", "PULSU", "ŞARKI", "KORUN", "BESLE", "HIDIR", "SÜLÜN", "ENLEŞ", "TÜYÜP", "ABALI", "ÖZELİ", "BAMYA", "BOMCU", "MUZİP", "HİPPİ", "UMUCU", "GEÇME", "GONCA", "SUFLE", "BEKİL", "KULSU", "SUTAŞ", "TERÖR", "PATÇI", "TÜRCÜ", "YIKIK", "ARİZA", "TEKST", "LİMLİ", "DÜŞÜP", "KUTER", "ORLON", "KUTÇA", "ÖCÜNE", "İŞLET", "YANAL", "DARIL", "ÇATAL", "BEYTİ", "NAZLI", "DEBBE", "VOLAN", "DURAÇ", "SOSİS", "KITIK", "MECMU", "SİMAY", "BARCI", "HAVCA", "UYLUK", "TERBİ", "SURLU", "ERÇİN", "ZİŞAN", "HALEL", "FAHUR", "NISIF", "İMAME", "CÜRME", "ARZCI", "HİTSİ", "ÖMRÜN", "ATLAT", "MADDİ", "NABIZ", "DÜŞÜN", "ÖLDÜK", "SUNUM", "BAKLA", "BAYIŞ", "AŞKLI", "ÜNSEL", "YALSI", "ÇARŞI", "AÇICI", "DAMAL", "ÇAPLI", "ENİĞİ", "LAİĞE", "ASMIŞ", "HİPER", "KARGA", "ÖZLEN", "SETÇİ", "UÇUĞU", "HANEF", "MÜBİN", "RATIP", "TÜMEL", "SOLUT", "DÜZEM", "UYMAK", "CEVAD", "BULAŞ", "KURAK", "MANCA", "İFALA", "DEĞİP", "ISLAN", "KABAN", "SORUN", "ÇEPER", "İDRAR", "AHSEN", "MAİLİ", "ÇÖZÜK", "TÜLEK", "GAMSI", "PİSİK", "ÇÖPSÜ", "AYTAÇ", "TEKİN", "MİLEL", "KAYAÇ", "SAZAK", "GAFİL", "LÖPÜR", "DERCE", "YARLI", "KADRO", "TUVAL", "BELİK", "SUSAK", "KİRLE", "İBRAZ", "DİZGE", "DOYGU", "SULTA", "SKECİ", "BASLI", "TUZCU", "HİÇSİ", "ESNET", "LOJİK", "ÇİĞİT", "OLÇUM", "BANAL", "GULAŞ", "SUVAT", "HAYIR", "ERKAN", "JÜPON", "ISRAR", "SEZME", "GİREN", "PUNDA", "LAMLI", "MARKS", "KLİBİ", "HACZE", "APRİL", "CİHAN", "TORSU", "ERESİ", "ÇELİŞ", "ZIPLA", "HAŞLA", "ŞUHUT", "HAVLA", "BİRAZ", "DİDİN", "GEÇİP", "TANAY", "KEFİL", "ŞEDDİ", "BÖCEK", "UÇAMA", "TURAN", "KAÇAK", "GAYUR", "SATİR", "BAYAR", "GEREK", "BOPLU", "SİLKİ", "REÇEL", "YUTMA", "EDİCİ", "NİHAL", "ÇEKİŞ", "ARŞIN", "ÇÖZCÜ", "GAMBA", "HAVUÇ", "KIZIP", "TOKER", "SÖYLE", "AKSIZ", "DİLLE", "ELHAN", "GÜNEY", "VİSAL", "YOSMA", "TEBAA", "MATUF", "OKUMA", "GÖLGE", "GÜDER", "MAÇKA", "SAVAT", "DİNCİ", "LENFA", "CAHİD", "İZLEK", "CELBE", "FANUS", "GÖĞÜS", "CANOL", "HAŞRİ", "YAZIT", "SİPER", "POFLA", "DÜŞES", "ÖBEĞE", "DEĞER", "KOFTİ", "BEHER", "İYİCE", "ETMİŞ", "ADALA", "KELES", "CANAL", "YUSUF", "ÇÖZME", "EKEME", "ERTAŞ", "DİREŞ", "UZVUM", "AHULU", "HİRAM", "LOPUR", "AÇMAZ", "YEGAN", "SÜBUT", "VARLI", "ULUSU", "TÖVBE", "ASİLİ", "AHTER", "ZIDDA", "ÇENGİ", "RAMLA", "HALSİ", "BOTÇU", "HANUT", "ABDAL", "FİDAN", "MACUN", "ALLAK", "İLSİZ", "BENİN", "TİTAN", "NESLE", "TİKLİ", "KAŞIT", "ZORSU", "TIRLA", "SOKRA", "BELCE", "DURUK", "TEPİL", "BÜZLÜ", "SİNLE", "UNSAL", "DEMLE", "VECDİ", "KİKÇE", "GADİR", "RAHAT", "KARGI", "TÜYLÜ", "ÇAYCI", "ARIZA", "YENLİ", "NESCE", "EŞEĞİ", "DONRA", "DİPSİ", "BOYSU", "YERİL", "DÖNÜŞ", "AYLAK", "ÇOĞUL", "EĞNİN", "İHMAL", "EMEME", "ÖVMÜŞ", "BUNCA", "UMDUR", "YIKIM", "DARCI", "CANSI", "İNANÇ", "PRAFA", "FÜZEN", "LÜTFA", "TARAZ", "BİÇME", "KAMİL", "KUŞSU", "RANZA", "UZLUK", "MERSİ", "İCBAR", "KUSUŞ", "PASÖR", "ÇÖKER", "ZEVCE", "AYIBI", "KISIR", "MEDİH", "AMALI", "TATÇI", "KUTBA", "GÖZGÜ", "MAÇLA", "BİÇİL", "TÖZCÜ", "KUŞET", "KUKLA", "ÇÖPLÜ", "ÖKELE", "MAHAL", "SANAT", "YANSI", "FECRİ", "NASUH", "KANIK", "PANİK", "MIRIL", "AYTIŞ", "ÇEŞNİ", "EMTİA", "İKRAZ", "CEVRİ", "ŞATIR", "DOĞMA", "PULCU", "ZEHAP", "HÜZNE", "ŞANSI", "KARCI", "TOTUK", "MİLSİ", "BUKET", "DUDAK", "GABYA", "MARAŞ", "EVLİK", "MEDHE", "KİBİR", "ELZEM", "TIFIL", "NESNE", "COŞUL", "HAPÇI", "VARIŞ", "DÜDEN", "NİMET", "MAYIŞ", "ZIPIR", "CAZİM", "DAVYA", "SİNOP", "KOKUT", "SOKET", "ECRİN", "BÖYLE", "SİPSİ", "POSLU", "FELCE", "AYLİN", "HAZIK", "İPTAL", "BİTÜM", "BİZCE", "SAİKA", "SOLCU", "MUŞSU", "DÜRÜM", "POPSU", "REMEL", "OKŞAN", "İFFET", "BUUDA", "ILIMA", "MÜRİD", "ÜZLÜK", "BRANŞ", "BARİT", "ERŞAN", "VİYAK", "CİDDİ", "SAMCI", "ÖLESİ", "İDEAL", "ERDEK", "DEMLİ", "IRALI", "SAVIŞ", "HACİM", "ÇAŞIT", "İŞÇİK", "KİRLİ", "LİRLİ", "ZEBAN", "SEKEN", "YARIM", "ZEHRİ", "ŞEMLİ", "YEZİD", "LAFZI", "FERAH", "KISIP", "HAVZA", "HATÇA", "SİZLİ", "SÖKÜK", "SÖVÜP", "BIDIK", "SANAN", "BİTEN", "REŞİD", "RODEO", "KIZAN", "GORİL", "ÇOKSA", "KAPÇI", "ŞİŞİR", "YAĞIZ", "MANTI", "KARIP", "ŞERLİ", "ANİME", "BEZİR", "ORSAN", "İŞLİK", "MAMBO", "DUALI", "EBADA", "TOPLA", "SOYUT", "HAVİL", "GARAZ", "NİYAZ", "YOLAK", "KUŞLU", "AKTUĞ", "ÇÖKÜL", "ASLAN", "KAKIM", "YALLA", "KIZIŞ", "AYCIK", "TÜNEY", "KARUN", "TURTA", "HIŞLA", "METİN", "ÜSLEN", "TORCU", "ÇEMÇE", "DÜŞÜT", "TEKEL", "SEMER", "ANONS", "ÖCÜNÜ", "İÇMİŞ", "CESET", "HASTA", "SURUÇ", "İBZAL", "KOŞAN", "DÜRME", "DENİP", "ÜNDEŞ", "TEVDİ", "TAFTA", "SEFİR", "KİFAF", "KOTÇU", "FULLÜ", "EVCİL", "ETFAL", "NARLI", "İHRAÇ", "ERCİK", "ERZAN", "AJANS", "MEMAT", "ZORCA", "YONCA", "GEYŞA", "KIVIL", "KAİDE", "KEBAP", "MESUL", "YARIŞ", "LİRSİ", "VEZNİ", "SAFLI", "AKSON", "ESMEK", "REDİF", "TANLA", "APACI", "SARAK", "ELEĞİ", "MUĞLA", "OLMAK", "GİDİŞ", "BOMLU", "GERÇİ", "HALET", "YIKIŞ", "SOKUP", "ÖMRÜM", "ANLAT", "METNE", "HOPPA", "RESMİ", "SADET", "GÜRLE", "DİNİŞ", "DÜZEL", "VECDE", "BÜZÜŞ", "BİTSİ", "SALLA", "ŞAPIR", "ZAHİR", "KOYMA", "ERSAN", "İFRAZ", "DİLİP", "MUHİK", "BOZUL", "FİŞKA", "LEYSİ", "JELLİ", "KOKAN", "GÜLME", "EFEKT", "VAHAB", "KÜSLÜ", "İCABI", "GEMSİ", "ŞOVLU", "BİRER", "ÖTÜRÜ", "DAYAN", "ÖNGÜT", "MASUN", "SKECE", "ZEMCİ", "ÖZNEL", "KIŞLA", "ALMIŞ", "KIYGI", "BİDAT", "PASAJ", "NABZI", "YÜKSÜ", "TALSI", "ARSİN", "ÜZMEK", "ORTAY", "KROKİ", "İTELİ", "PATAK", "İTEME", "DEŞİP", "ÇINDA", "GRİZU", "KULAK", "İDADİ", "OTACI", "HASEN", "KAÇLI", "İŞMAR", "FELCİ", "RİMEL", "ÜNLEN", "ULAMA", "BOLCE", "TASIM", "HEKİM", "ODALI", "ÇANSI", "SİNİK", "SEZAİ", "KARİN", "EKİBİ", "KÖRLE", "PAMİR", "TAVİZ", "KRAMP", "NİŞLİ", "GÜVEÇ", "BAŞSI", "TONCA", "SIKIN", "İLMİK", "BOHEM", "ÇATIK", "UTASI", "ZIMBA", "KASRA", "KIZSI", "MİSİL", "EŞLİK", "HÜNER", "ÇALIM", "AKTIK", "DÖKÜN", "TÜTÜN", "CANAY", "İBRİK", "İBARE", "LARVA", "NİSAİ", "BURSA", "FETVA", "HİSSİ", "HARAM", "YUTUL", "DİYEN", "BUDAN", "ÇIBAN", "ÖZATA", "CEVİR", "AŞLIK", "ŞİŞSİ", "UÇKAN", "ÖTMEK", "ÜSLUP", "KATIL", "KRAÇA", "GİZEM", "DOMUR", "DÖKÜL", "DOZER", "KAPSA", "ŞAHMA", "SAYGI", "MURİS", "ZEREN", "BİTLİ", "NEVCİ", "ÇIKAK", "FESHE", "ÖKTEM", "ŞANER", "SİLAH", "BENNA", "MEBNİ", "EĞMEZ", "FORSA", "SARAT", "DİNSİ", "ANTİK", "BESNİ", "HAPSİ", "ÇİNEL", "MİYOP", "ÇAKIP", "DİNME", "FERİK", "YOKUŞ", "NAFTA", "ŞEHRİ", "ÇOTRA", "VARTO", "ÇÖZÜM", "COPLA", "ODEON", "AFAKİ", "EĞDİK", "DİLEN", "ÇEKME", "NANİK", "SERLİ", "UCUMA", "KADÜK", "YEMİN", "NECMİ", "BASIN", "GENZE", "SUDAK", "PİRCİ", "ZENAN", "GAZLI", "METBU", "BARBA", "SİMİN", "OYMAZ", "DÜŞÜR", "HİTLİ", "İŞTEŞ", "KEŞİF", "ÇİNLE", "ALLEM", "SABIR", "CANİP", "REAYA", "VURAÇ", "ÇALSI", "HACİZ", "SÖZEN", "HAİTİ", "MAVİŞ", "TÜYEN", "BAYER", "KRİKO", "TANIK", "TÜNEK", "IZRAR", "SOFLU", "SAPÇI", "HUNLU", "AYSEV", "AYART", "SUNER", "YIĞIN", "MAMUL", "ŞİRİN", "SOĞUK", "AVANS", "DELME", "ALMAÇ", "SİNİL", "OVMAÇ", "ÇEVİR", "HANİF", "TİPLE", "GERGİ", "MECRA", "ALTLI", "FENNİ", "AVUNÇ", "MİHRİ", "SEHER", "BAPLI", "ÜSTER", "ATICI", "ÇAVAN", "BASMA", "HAMİŞ", "DİNEL", "YAPAY", "DÜZLÜ", "FÜTUR", "RAVZA", "KUMAŞ", "NAKİL", "PATİK", "MEVZİ", "DRAMA", "CEMLİ", "ERBAA", "KUMLU", "ADEDİ", "TAVRI", "ÇEREZ", "GERİŞ", "AKLAŞ", "DÜŞME", "ÖRGÜN", "PASLI", "YERGİ", "DENET", "SEHMİ", "FİTNE", "BALLA", "AKBAŞ", "EKSİL", "KAPİK", "MUJİK", "MİKAP", "RADDE", "BİTME", "FUTÇU", "SİNEN", "MÜNİF", "ÜMRAN", "GÖĞSE", "HEPER", "İÇLİK", "KABİR", "HIŞMI", "İLGAZ", "BATIK", "ANTET", "DİNGO", "KURUM", "SOYCU", "ÖZNUR", "DİYET", "VERME", "İLETİ", "OKYAR", "ABİDE", "HAVUT", "YADSI", "DELİN", "MİMAR", "TERME", "SİNLİ", "AKRAN", "SELCİ", "HAVLE", "KALIM", "UÇMAK", "ENİSE", "GAZCA", "FULYA", "YUMLU", "CAZLA", "ÖVÜNÇ", "HAŞRE", "FASIK", "SELLE", "YAMUK", "BEDRİ", "SEKİŞ", "PİSİN", "DEŞEN", "KÜLOT", "NAKDİ", "HUĞLU", "MİTOZ", "ETÜDE", "HANLA", "SALPA", "BASİT", "ONLAN", "DUVAK", "CERCİ", "KARYE", "HEMPA", "ÖZBAŞ", "LAVAJ", "İTABI", "KADİF", "BOŞSU", "DORUK", "ŞARIK", "ŞAŞIR", "ŞEYLİ", "GÖZCE", "İLKÇE", "İMALA", "TANİN", "ALYAN", "KUBBE", "TACAL", "YATIL", "GAZEL", "GEVAŞ", "KELEP", "EVREN", "FASAL", "MURCU", "KÖYCÜ", "YİYEN", "TUĞLA", "EZANİ", "GAREZ", "BARAJ", "DUACI", "MÜHRÜ", "CUPDA", "SIHRİ", "BEŞİR", "ÇAKIM", "ÖTTÜR", "KAVUZ", "HARAÇ", "YARKA", "KAFUR", "ASPUR", "BAZİT", "ZORBA", "NEVCE", "EMARE", "RAPSI", "MEHİL", "ÜZESİ", "TEPİK", "POSTA", "FARAŞ", "MICIR", "AYRIT", "KELAM", "ŞOPAR", "MÜNİR", "FIRKA", "SAKİT", "HASSA", "KAVUK", "KOTAR", "SABRA", "OLEİN", "DÜZÜP", "TATSI", "KIRBA", "SİHRE", "DÜRÜŞ", "FİYAT", "TATAR", "AVARA", "CEMLE", "CELİL", "PIRTI", "KLİPS", "SOLUŞ", "BÜRÜT", "MUSKA", "DAĞCI", "ŞİMDİ", "AKAİT", "ŞAKİR", "ÖREKE", "TUTAM", "FOSLA", "BİLET", "FULLE", "ERDİR", "GENİZ", "KANAN", "OLUCA", "ESANS", "DOLAR", "HOZAN", "BEKAR", "BENZİ", "MİSAL", "VERGİ", "YAVUZ", "VASFA", "PİLLE", "CUKKA", "TABAK", "ÇETİN", "BÖĞRE", "LAKAP", "MEVDU", "ÖRNEK", "HÜLYA", "TIPLI", "İYİLE", "ÇOLUK", "EZDİK", "KUZEY", "SAMLI", "İRŞAT", "ZIRTI", "ERBAY", "BUHUR", "YAZIK", "MATEM", "MEKAN", "AFŞAR", "İBİĞİ", "EDİĞİ", "AYGÜN", "HANAY", "BASUR", "SEGAH", "DİDEM", "DİNGİ", "FONCA", "KATLI", "KETLİ", "RAHMİ", "NEBZE", "ÜCRET", "ZERCE", "KORUT", "İBLAĞ", "NÖRON", "MİRSİ", "ÇÖKÜŞ", "ÇALAR", "PAMUK", "ZENCİ", "LONCA", "KULLA", "AVLAT", "KAKÜL", "HACER", "SERSİ", "ZERİN", "MİZAN", "GÖÇER", "SESÇE", "YUNUŞ", "ŞEHRE", "KUBUR", "ŞAYET", "NEFHA", "PARPA", "NALCI", "YAKIP", "HAFİK", "KABZA", "PARAF", "IRGAT", "GARİP", "YAVSI", "KÜBRA", "KONMA", "SİYAH", "TETİK", "TAVAN", "SALIK", "ÖZGÜÇ", "AYAMA", "BERİN", "TİPSİ", "BAYIR", "ÇITAK", "SUUDİ", "İZNİN", "VELİD", "ASTIR", "ANAMA", "DİŞLİ", "ARKIN", "GİZCİ", "EŞELİ", "SOYKA", "CİYAK", "KAVİS", "ŞAHIS", "TAZİM", "NOTAM", "İMROZ", "ÖNLEN", "YİTİŞ", "HUSUL", "KOPAL", "KOŞİN", "BAĞLI", "SEBEP", "BİZLİ", "HARSI", "RÖTAR", "HÜKME", "ÖZBEY", "KEŞSİ", "ASTAR", "TASLI", "LOBUT", "AYYAŞ", "ESNAF", "POLİS", "BİLME", "CEHLİ", "FALSI", "LİKİT", "UNVAN", "POTAS", "YAYGI", "BULMA", "ACABA", "MARAZ", "TIPIR", "BUZSU", "KINLI", "ÜRKEK", "KERDE", "AŞAĞI", "SAPIL", "BAŞİR", "FONCU", "YOLUN", "ZİNDE", "ÖKSÜR", "AHİLİ", "KESEN", "HERKE", "YONGA", "İTTİR", "KARAN", "YOSUN", "UŞAĞA", "BUĞUZ", "BATÖZ", "KEVEL", "SIĞLA", "ÖRTME", "KUPON", "ŞEFİK", "CEBEL", "RÖGAR", "ATSAN", "CANİB", "ÇİZİK", "HAŞIR", "EYLÜL", "DOZLU", "YİRMİ", "BALYA", "İNCİN", "KOMSU", "İZLİK", "SELMA", "ÇERGE", "ROBUN", "ŞENAY", "DELGİ", "KOŞUT", "ONMAZ", "YELLE", "EMLAK", "VARAK", "ÇOCUK", "ZEHRE", "ZİHİN", "AKLAN", "HAŞAT", "AZLİM", "VEHMİ", "AKACI", "ŞEPİT", "ÇOBAN", "ÖZDİL", "YETER", "SINAN", "ULALI", "HADCİ", "İLİĞİ", "KOKMA", "YÖNLÜ", "ARTIŞ", "KOYLU", "İSTEN", "OLGAÇ", "ORHON", "HACRİ", "SAHRE", "TEPKE", "KÜPÇÜ", "RECEP", "BEHRE", "YEMEK", "POTİN", "KILCA", "YAŞLI", "METOT", "ZAMME", "FOSSU", "NADİM", "ESMİŞ", "BETÇE", "ŞORLA", "İKBAL", "DEVRE", "BEHİÇ", "KUTNU", "SIKMA", "ÖNCEL", "BEĞEN", "BANKO", "TEŞYİ", "SEFİH", "HELAL", "RUGAN", "KAPAT", "FORUM", "KARLI", "FARİĞ", "APİKO", "KOLLU", "SİRAC", "YUNUP", "SURAT", "YURDA", "DÖLLE", "TAMAM", "ÇITLA", "KİRİŞ", "ÇIKTI", "AVDET", "LAGÜN", "KULCU", "MAZUR", "KASIT", "AÇALI", "SIVIŞ", "HİSLİ", "MÜRAİ", "NETLİ", "SOKUŞ", "EDİLİ", "KERCİ", "KIYIŞ", "İRKEN", "FİŞÇİ", "SAPIP", "FİFRE", "ÇİTME", "MADEM", "KASIL", "AHRAZ", "LİMON", "TAKIM", "DİZİP", "SOLUN", "PARÇA", "İLLİK", "KOYAN", "FISLA", "TÜKEL", "HEYET", "İBİĞE", "BERAT", "DÖLEK", "GÜLÜK", "MIHLI", "YOĞUN", "GROSA", "NİJER", "ANJİN", "ŞEFSİ", "HÜSÜN", "ZATSI", "BUDUM", "KROME", "ANISI", "ALACA", "TANJU", "ŞENCİ", "ATMAZ", "KUTLU", "TUTUN", "TÖZÜM", "BAZLI", "UĞRAŞ", "GELİŞ", "ILGIN", "HATAY", "ÇÖMEL", "GÖĞEM", "PULLA", "HALLE", "TULUM", "AHENK", "KANIL", "CERİT", "DOYUL", "ÖLMEZ", "EMİNE", "ÖZERK", "YUTAK", "FAKLI", "BÜĞLÜ", "AYALI", "YOBAZ", "BAŞKA", "İSMİM", "MUZCU", "RESİM", "GURME", "HÜRCE", "ŞAHÇI", "GEDİZ", "DUYGU", "TİRAN", "GOLLÜ", "DERİL", "TÜNET", "RUMUZ", "NAZİK", "GÖZCÜ", "İÇMEZ", "KIYIP", "MAHRA", "KAHYA", "VİŞNE", "ZİLLİ", "BASIM", "HUTBE", "SENET", "ARIĞA", "ÇALCA", "GİRİP", "YETİL", "ÇAĞMA", "TORLU", "YANLA", "SİTSİ", "TAKVA", "KÖKER", "LARGO", "BERRA", "REYSİ", "YANKI", "YAĞCI", "MİRAT", "YERİP", "GEZEN", "HAMRA", "PESÜS", "KORTE", "ÖZENÇ", "PİRLİ", "MEBUS", "EMZİR", "AKALA", "EYTAM", "TAŞAN", "GEÇİL", "YAHUT", "NAŞİR", "DARLI", "MIGIR", "RAŞİD", "KESİN", "MELEZ", "RASİH", "SABIK", "YAZIR", "ÖTÜCÜ", "İRKİL", "ECELİ", "TESİS", "ARZLI", "KEHLE", "TİTRE", "EKŞİT", "SAYSİ", "DÖVÜP", "COŞKU", "NEMCİ", "NÜLEN", "CAMİA", "ERZİN", "YANAÇ", "DİNLİ", "YILLA", "İDAME", "SABİT", "NACAK", "SANIŞ", "ÜZELİ", "TEŞRİ", "KIRCI", "BORSA", "İLAVE", "FAHRİ", "NOTLA", "ATLAS", "GÜZLE", "AKABE", "KÜSÜŞ", "AZMAZ", "ANTLI", "FİNAL", "TAMİM", "KAHRI", "GULAM", "YERSİ", "SERRA", "BÜKÜL", "ALBÜM", "PEŞLİ", "KÜLLİ", "MALUM", "ALÇAK", "AHVAL", "LAMBA", "LİTRE", "MUDDA", "YARDA", "YAZCI", "TAVRA", "AÇLIK", "BASAN", "İNCİT", "CIRLA", "FAKAT", "LİMİT", "KESİF", "İPEĞİ", "HALİK", "ÜSKÜF", "IRALA", "BÜRÜN", "HİÇLE", "BİRİK", "PAMPA", "ÜZÜCÜ", "DİZİM", "ARTIP", "GOLCÜ", "TALAZ", "YIKMA", "SÜNÜP", "AYSIZ", "HÜRYA", "SARMA", "ÇEKİÇ", "ÇİMLİ", "RUJLU", "CAYAN", "KARHA", "EFDAL", "SEVAN", "HALAT", "ARKAN", "FORMA", "ERMEZ", "İPEKA", "GEMLE", "TİKEL", "ZEVAL", "GÜBRE", "DİŞET", "HASİS", "BAROK", "SÖNME", "İNEĞİ", "SÜRGÜ", "YORTU", "KESEK", "KIMIZ", "DOKÇA", "MOLOZ", "TEMÜR", "VOKAL", "BOZUK", "GÜÇLE", "EMEĞE", "KELLE", "NEŞRE", "DATÇA", "BİRLİ", "MELAL", "NESCİ", "NATIK", "KOVSU", "ÇEKLE", "GÖMÜL", "CONTA", "GURUP", "GENSİ", "DÜZEN", "DEVRİ", "SAHAN", "İNFAK", "ŞARYO", "BAŞAT", "ATESİ", "DÜŞÜŞ", "OYLAT", "TİMUR", "TESİT", "STREÇ", "GAMLI", "SAĞIN", "YUMAZ", "İYELİ", "ŞOKLU", "FLÖRE", "KOYNA", "PEYCE", "BEDRE", "SAĞCI", "MENCE", "ÇİMEK", "GÖMÜŞ", "LANSE", "HASSE", "TOYLA", "EGOLU", "AZNİF", "HUSUS", "MORSU", "VURUP", "ŞEHLA", "ASALI", "GLASE", "KENEF", "ŞİNİK", "TAPIŞ", "ÇAKER", "BARİZ", "UDUNA", "NASSI", "RİCAT", "ARACA", "SANAK", "BOKÇU", "LENİN", "KANCA", "KOMLU", "CAZIR", "SECDE", "SERİM", "DİBİN", "ŞEKİL", "YIRIK", "BARIŞ", "MATLA", "ÇEKİN", "AMİBE", "GEZLİ", "TASLA", "VURUM", "TEŞCİ", "ESLİK", "ALARM", "MEYUS", "HİÇLİ", "FIRTI", "PALAY", "ETRAF", "BAHRE", "AKKUŞ", "ÇOKSU", "PAHLI", "AYRIM", "ARILI", "KISAS", "ŞURUP", "SADIR", "KAZAZ", "İSPAT", "YUNUS", "MESİH", "CAFER", "HASET", "REYLE", "AŞURE", "MADDE", "VONOZ", "SARIŞ", "SİNÜS", "HOMUR", "YEMEN", "TÜNCÜ", "KEFAL", "EVRAK", "SİCİM", "ETABA", "TOMUR", "AYGIT", "HACCA", "ÇAKAR", "TEVZİ", "ZİKRE", "SAKİL", "YUTAN", "SİĞİL", "HAŞİV", "MEHLİ", "EMLİK", "ADETA", "PLAĞI", "TELİF", "LİMBO", "FASON", "ÇİROZ", "KİZİR", "SİNAN", "AVLAN", "KOYSU", "SENAN", "NEPAL", "DOĞAL", "HOŞAF", "ŞUALI", "KALIÇ", "ZEFİR", "EHVEN", "KİRAZ", "TİNCİ", "ÖZLEŞ", "KİLCİ", "ÇAYCA", "EDİNÇ", "EKÇİK", "NARCI", "DOLUN", "KİPLİ", "REDDE", "REYON", "ÖZBEN", "KARAR", "CİSMİ", "AYGÜL", "METAL", "MEDDE", "SAYAÇ", "NEFTİ", "UÇASI", "ALTIZ", "NEDEN", "AYILT", "SOFÇA", "FİTİL", "KIYAK", "OMLET", "NİHAİ", "AÇAMA", "ALİZE", "DEPAR", "LİNET", "HAMCI", "DOLUK", "İÇEME", "HARBE", "AĞRAZ", "KOZAK", "ÇEKİK", "PANEL", "ABLAK", "KUMSU", "AFLIK", "NİFAK", "ASALA", "DÜVER", "ERKOÇ", "MİLAT", "SÖKÜŞ", "ÇEKÇİ", "DUYAN", "TAÇLA", "EDİBE", "FATİN", "ŞİPSİ", "EKSİN", "HAMLA", "HEDER", "NURCU", "TOZLA", "TAFRA", "SALAŞ", "ÇAKAL", "MAGMA", "SÖĞÜT", "YAZLI", "HABBE", "HAYIF", "JİLET", "KATRE", "NAZLA", "SATAŞ", "KUPLE", "LAKLI", "URUBA", "EŞLET", "HİMEN", "ÖVMEK", "KALAN", "MİRZA", "KOLİK", "YAKIM", "ASLAT", "TİRAJ", "TRİKO", "DEVAM", "YUNMA", "İÇİRT", "SUCUK", "ÇADLI", "BİLGİ", "HULKİ", "KABUK", "CAMEV", "YİVLİ", "OKSİT", "HOROZ", "ÇİTLE", "EGECİ", "AKTAY", "SEVİK", "VALÖR", "VUZUH", "ÇEPNİ", "DEKSİ", "ARAZİ", "GÜZEL", "İÇREK", "HASAT", "NEKES", "EDVAR", "İNŞAT", "TERFİ", "YAĞIŞ", "YUMMA", "AKILI", "AYICI", "CÜNÜP", "USLAŞ", "SÜRÜT", "CEMİL", "FAHİR", "MEVKİ", "SATHA", "EMZİK", "FİŞLE", "KÖÇEK", "NAİBİ", "RALLİ", "BOALI", "DERLE", "ÇAKRA", "BELDE", "BARIN", "ESSİZ", "YOLLU", "CANCA", "APTAL", "FAKİH", "GÜDÜP", "YUTUP", "GALOŞ", "TEATİ", "YILGI", "ŞİFON", "KÜŞAT", "SATUK", "SELEF", "KOPUP", "KİBRE", "ELVAN", "MUTAF", "ÖVDÜR", "EMSİZ", "EZALI", "LAMCI", "İMLEN", "TORBA", "İLDIZ", "LAFLA", "ŞÜKÜR", "PİNLİ", "DİZSİ", "KÖMBE", "RÜŞDÜ", "FİLET", "TAKMA", "EKLEM", "MUHİT", "KADER", "UÇTUK", "BOYAN", "ÇALIN", "AYASI", "DELİR", "TÜMÖR", "YÜNCE", "SÜZÜK", "VACİP", "ANMIŞ", "ÖĞRET", "ŞAŞIL", "KİLİT", "ERTAN", "CEHDİ", "NABİZ", "TOMAK", "MERVE", "UDUMU", "YUFKA", "ÇEHRE", "PAKLA", "LAĞVI", "ACİBE", "MABAT", "BÜCÜR", "VİRAN", "YEDEK", "DAMGA", "DRAJE", "UMUMİ", "AYILI", "KİYAN", "DÖNEN", "ERKUL", "DİLCE", "ENGİN", "ÖZBEK", "EZMİŞ", "DÖKÜK", "OMZUM", "ÇİZER", "ANİCE", "SARIK", "FEKSİ", "TOPUT", "VEÇHE", "YELİZ", "ÇİFTE", "KÜFÜR", "MUMSU", "YAFTA", "DÖŞEK", "EMRET", "OBERJ", "TIRIS", "NİZAM", "GAZOZ", "EVAZE", "KALIT", "YAŞIN", "GÖKSÜ", "ASKAT", "SÜKSE", "MARAL", "SAKSI", "ÇÖMÇE", "TAKOZ", "VEKİL", "ASİSİ", "ERGUN", "RABİA", "MEKİK", "AYYUK", "SARAN", "MALLI", "BEDLİ", "DİLİN", "VEBAL", "ALAMA", "PÖRSÜ", "BATUR", "TEKME", "VİNCE", "YUTUM", "BANAK", "KURLA", "KARLA", "ÇEŞİT", "KISIT", "CÜNUN", "REFET", "LEHLİ", "KASİS", "TOKAT", "TENGE", "ŞÜKRE", "GASBI", "DÜŞÇÜ", "YAĞAN", "BİLİN", "VAROL", "KASIR", "YAYIL", "YEKUN", "LEDÜN", "SALAH", "FERSİ", "TIKIM", "GENCİ", "YILKI", "KAMUS", "GUSLE", "ÖGELİ", "DİKİT", "İMKAN", "AREFE", "SONLU", "UMMAZ", "OKSUZ", "PÜREN", "EVVEL", "HAZLI", "ÜNSAL", "YASLI", "BARSI", "TOHUM", "ARTER", "PROVA", "SEĞİR", "ZULME", "AHMED", "GEZSİ", "OYSUZ", "TÜPLE", "ÇAKAN", "KEKSİ", "TOĞUZ", "RİJİT", "USKAN", "ATMIŞ", "BAYIL", "SIKIT", "ALALA", "SIVIK", "TELEF", "KEMER", "DUYUŞ", "KIZIL", "HELVA", "YEMLİ", "GEÇİR", "KÖKÇE", "MELCE", "NİJAD", "TAYSI", "İRADA", "TAŞIP", "YÖNET", "İMBİK", "ŞAMAR", "DEŞİŞ", "TEYİT", "KOMCU", "MUSAP", "LALAŞ", "OZMOZ", "ÜNİTE", "ÜSERA", "IRGAN", "CAİZE", "UYAMA", "ÖPMÜŞ", "SEMİZ", "GÜMÜL", "MANGO", "CİNLİ", "İSLİM", "NAMAL", "TAYCI", "KORSU", "AHLAK", "KİNCİ", "EMMEK", "CİMLİ", "ARTUK", "AVŞAR", "BEYAN", "BÖLÜŞ", "TEYZE", "ELÇEK", "UŞŞAK", "YÖRÜK", "SALAN", "ŞOFÖR", "HÜZNÜ", "AĞLAN", "TACIZ", "VİTİR", "MUTAT", "BORSU", "YARSI", "ÇOKLU", "ÖZALP", "BÜKÜP", "ÖĞLEN", "ZEKAT", "TOYGA", "DÖNÜK", "MEŞRU", "EVSİZ", "İMECE", "TENOR", "ÇABUK", "SUCUL", "ÇİZGİ", "ŞEKER", "RÜŞTÜ", "ERKAM", "BÖLEN", "ÇAĞLI", "ÖRFÇÜ", "KABİL", "DÖRDE", "SATHİ", "MUZIR", "DİYEZ", "KASRI", "LİFÇİ", "SANLI", "APLİK", "BURNA", "FRANK", "SADIK", "ERCİŞ", "ABRAT", "ÇELGİ", "HURDA", "REZİL", "YAYMA", "HOŞÇA", "TELEK", "KERTİ", "KALLİ", "ŞOVEN", "MORAL", "YARLİ", "ŞIKLI", "ŞEKEL", "ZEBUN", "ZÜRRA", "TABSI", "DATİF", "DOZAJ", "HEYBE", "HUSUF", "SAPMA", "MAGRİ", "KANIP", "DURAK", "BALAY", "MİADI", "PUTSU", "ETHEM", "KATİL", "TOZUL", "KANIT", "PIRLI", "LAFZİ", "GETTO", "GÖZLE", "TENSİ", "ÖNGÖR", "SÜRUR", "GÖYÜK", "UYMAZ", "ABBAS", "YUMRU", "TIPÇI", "UTANÇ", "KOCAN", "SİKİL", "AYACI", "FONLA", "SAYCA", "LİPİT", "UYAĞI", "ECDAT", "BETSİ", "AĞART", "HERSİ", "SİCİL", "HEDİK", "TAKSI", "VİYOL", "HERCİ", "MUARE", "FİLOZ", "SİMSİ", "BUŞON", "CEMEV", "BAĞCI", "TAŞLI", "KÖMÜR", "UMMAK", "OJELİ", "TULUK", "TESİR", "ETÇİK", "MENŞE", "HÜLLE", "DEDİK", "ÇİVİT", "ANDIÇ", "SOLUK", "FİLAR", "ENTEL", "SAVLA", "ŞALAK", "GAROZ", "MASKE", "KUMUL", "ZAKİR", "VEDİA", "ROPSU", "EVLAT", "AYIRT", "İTİLİ", "AYFER", "TAĞAR", "SADRİ", "MEDAR", "SLAYT", "SÜSÇÜ", "SEKEL", "VELEV", "MARİZ", "AÇTIK", "ECECİ", "AHFAT", "GİDON", "MAKAS", "İFRİT", "POSSU", "KÜMES", "BÜKÜK", "LİKEN", "RİTME", "VAKAR", "TUNCU", "İŞTAH", "ACILI", "GÖRÜL", "YAPIP", "TÜMCE", "KIYIL", "GİYEN", "DAMAT", "YAHŞİ", "VATLI", "CAMCI", "OVDUK", "SABAN", "HAZCI", "ÇIKAN", "TEMLİ", "MEHLE", "MİLCİ", "KAHIR", "DARSI", "GÜROL", "AYLIK", "DEĞME", "FIRIL", "LAVCI", "GÜRCE", "TANIT", "BARET", "REZAN", "KESÇİ", "TİKAÇ", "TAMSI", "ARLAT", "SOFRA", "SÜSME", "ŞEBLİ", "DIŞKI", "MÜZİK", "PARIL", "ÖZBAL", "BÜKME", "TARET", "YENEN", "ÇİĞCE", "KOZCU", "DOLGU", "SIZLA", "PİŞME", "DAVLA", "KOÇSU", "EPRİT", "SANRI", "BAVCI", "ATLIK", "KESİP", "DİYİN", "IŞKIN", "ŞERCİ", "ETEĞE", "SETRİ", "KISAL", "İTMEZ", "FATİH", "SIRIK", "NURAL", "GİYİP", "BAHİR", "BİRUN", "SÜRÜP", "BASİL", "GUANO", "KOKOZ", "VAKTE", "YORUL", "KURUL", "VEHBİ", "TONİK", "ŞIĞIN", "AŞALI", "TIKMA", "KANUN", "PAYLA", "KAZLI", "YÜZEN", "OTÇUL", "KÜTÜR", "SARİG", "HAHHA", "İZLET", "UĞRAK", "AŞASI", "GÖZEV", "ÜLKEM", "BOKSU", "PENES", "TORAK", "NERMİ", "KÜTÜK", "FALIK", "CİĞER", "ATARİ", "KOŞUP", "SİTEM", "TARLI", "TEBER", "BİTEY", "CAMIZ", "AFAZİ", "HİSÇİ", "İLMİM", "KİBRİ", "ÇAVLI", "ÖZGÜR", "DADAY", "ILIĞI", "PEKÇİ", "DOYUP", "NAÇAR", "DİRET", "TABİİ", "PLATO", "HİZBİ", "KEVEN", "HANYA", "HIZMA", "PABUÇ", "BEYAZ", "TÜFEK", "BANMA", "GEĞİR", "SAPTA", "TİMLİ", "ERİCİ", "KOCAT", "SÜZÜŞ", "ŞENER", "DALAŞ", "TAKAT", "KODES", "TADIŞ", "ERHAN", "SEANS", "ANASI", "SUNGU", "KIVIR", "MÜDÜR", "AMUDİ", "MİYAV", "YAVRU", "ÜLKER", "ŞIMAR", "KEFEN", "İRİCİ", "GÖĞÜN", "MİMLE", "KUTUP", "YEĞNİ", "TURFA", "JETÇİ", "SELAM", "SÜMEN", "YAYSI", "TOKLU", "BOŞÇA", "YUMAN", "SÜPER", "BEYİT", "BERİL", "MEYAL", "SEVİP", "KAPLA", "AZIĞI", "DAVUD", "KALÇA", "ALTAY", "ÖLÇÜN", "KASSI", "TRÖST", "ŞAYKA", "ZİFAF", "FISIR", "BUĞZU", "KABRE", "TIKIP", "TURNE", "ÖZKAN", "TÜTME", "YETİP", "GÜNAH", "BÜKSÜ", "OKLUK", "SÜZEK", "RİTİM", "NİYET", "GEVRE", "REFİĞ", "ÇOĞUN", "ABİLE", "DİPÇİ", "YETKE", "ŞALLI", "DÜBEL", "GÜNAY", "LİFÇE", "TELAŞ", "SONDA", "ÖNCÜL", "ANCAK", "AVSAL", "BİRCİ", "DEVSİ", "AZASI", "KANSI", "FİLSİ", "GEBER", "PUSET", "KÜRET", "ARGIT", "MASUM", "KESİR", "ŞİRAN", "ESKİZ", "CİHAD", "SÜZGÜ", "GÜLEÇ", "DASİT", "KAŞİF", "KÜSME", "AYMAK", "TOKÇU", "NEVRİ", "KAKSI", "TOPAL", "TİKLE", "HAVSA", "AŞIDI", "ÖZBAY", "LOĞLU", "LÜKSÜ", "EMECE", "BÜLUĞ", "NİSPİ", "TÜKEN", "TENCİ", "AKTAR", "BAZCI", "EMMEÇ", "EĞMÜR", "GÖVDE", "BEZİK", "GİZİL", "ABANA", "KAHİN", "İŞSEL", "AFGAN", "ÖZCAN", "ULULA", "FİDYE", "ARZIK", "NAİMA", "ZELİL", "PASTA", "İLKSİ", "MALEN", "KAKIL", "HİTAM", "YOLAN", "YAYIP", "TAŞIR", "ALALI", "GÖRÜN", "HARLA", "UDUNU", "ANANE", "ŞIRIL", "ŞERİT", "FAŞLA", "DERİN", "DALIN", "SIZAK", "İPLET", "POMPA", "ÇEVRİ", "TAMİR", "MEÇLİ", "FEHME", "SANMA", "UNSUR", "HALFA", "ÇENGE", "KOÇAK", "OYACI", "NAZIR", "MUYLU", "İÇYAĞ", "NOKTA", "SERCİ", "ŞİŞLİ", "OLMAZ", "URSUZ", "BAFRA", "TUŞLA", "CENUP", "SAYHA", "OLAMA", "LORCA", "GODOŞ", "SÖKÜN", "HÜDAİ", "OTURT", "BAVLI", "ELALA", "MAVRA", "İNLİK", "DALIŞ", "PEKÜN", "DALAK", "FİSKE", "KEPÇE", "LİGLİ", "PÜFLE", "CANSU", "HABİP", "VERİT", "DIĞAN", "MAKTA", "ETİĞİ", "DİLAN", "RAGBİ", "SİLEN", "KIRIL", "EMRAZ", "GÜLCÜ", "ETKİN", "VARCI", "NAİME", "STRES", "ŞAKAR", "KEŞAN", "SEÇİL", "MUHİB", "KAFİR", "ŞARAP", "MANİA", "NECİL", "PÜRSÜ", "EKLET", "LİRİK", "MUTLU", "ÜSTLE", "BIKIP", "SİVAS", "İHSAN", "TASMA", "DURUM", "GÖMÜK", "MEĞER", "ÜTMEK", "KOŞUN", "EŞEĞE", "ATİCİ", "SÜLUK", "KASMA", "NEDİM", "ŞARIL", "İMLİK", "HADİM", "HEMEN", "MECDİ", "PİYAN", "DEVAN", "AĞILA", "BULCU", "SAĞRI", "KUZCA", "PAKÇE", "ZARLI", "TARIM", "PERDE", "ÖRMÜŞ", "ALKIM", "ŞÜKRÜ", "CEZBE", "SEMSİ", "ÇAMUR", "ÜRKÜL", "KÖRLÜ", "NUROL", "SOYLU", "AHDİN", "MEYCİ", "OLDUR", "OLDUK", "MEDHİ", "ANGIN", "MEZON", "ŞAYAK", "KÜRLÜ", "KEDER", "ZLOTİ", "ÇIRAĞ", "OYNAK", "BEYSİ", "ZEKER", "İÇTEN", "İVEME", "ENSER", "BİRGİ", "TALAK", "İYİCİ", "ALBAY", "SATIP", "SÖMÜR", "ÇALAK", "ESSEL", "ARTÇA", "NAHAK", "LAYIK", "GELİN", "ÖZTAN", "TANEN", "MERİÇ", "BEYTE", "HACZİ", "EKİLİ", "NANAY", "TALİP", "TÜLSÜ", "VAADE", "EĞİCİ", "ÜSTAT", "NÜZUL", "RACON", "LAÇKA", "OMZUN", "MÜFİT", "SAHİP", "MASAJ", "DİKEL", "HADİS", "OYMAN", "SALLI", "YAKLA", "ERKEÇ", "ESTİR", "AYGIR", "AKİĞİ", "ÜRELİ", "SEMLİ", "BOZAR", "DİKLE", "SEVİM", "TASSI", "JOKER", "BELEŞ", "LÜTFİ", "SAYIŞ", "DİYOR", "TÜRKİ", "CEDEL", "GİYİL", "ESSAH", "KETSİ", "DİZİN", "SIRIT", "HİZBE", "KISKA", "ÖRMEK", "ÇİĞNE", "ALİLİ", "ORGLU", "REVİR", "PİRSİ", "SAPLA", "ÖÇLÜK", "BEDÜK", "KOŞMA", "SOKUL", "BELHİ", "İNKAR", "DÜRZÜ", "MAHYA", "NEŞAT", "MÜNCİ", "TAİFE", "ŞİLTE", "DENİŞ", "ÇORCU", "NETÇE", "SÜTRE", "DAİMİ", "İNGİN", "KUMLA", "ÖTESİ", "ATİĞİ", "İSRAF", "AYTEN", "DERME", "TALCA", "REKAT", "UÇMUŞ", "DUYUP", "OVALA", "KELCE", "VAKFI", "CİPSİ", "DİVAN", "YAPIŞ", "İVESİ", "KAYBA", "KOÇAN", "AYMIŞ", "OTOLU", "TEZEL", "BAŞLI", "UFLAT", "UFKUM", "KANMA", "RESİF", "ANSIZ", "FENİK", "KAZIK", "ÇEVİK", "RAYCI", "ÜÇLÜK", "GALİB", "MİKRO", "YIĞIP", "YIĞIL", "HİCİV", "ÇAMCI", "SEZİN", "SALIŞ", "DÖLCÜ", "YONTU", "SEDEF", "SAPSI", "ÖZHAN", "YAKIT", "TONAJ", "KABRİ", "ELHAK", "SİLİK", "ÖTELİ", "ZİRAİ", "TUTUK", "HAYIZ", "ŞEHİT", "AYNEN", "AZMET", "SAVIL", "GALON", "ZÜLÜF", "AFSUN", "SÜSLÜ", "MISRA", "SENİR", "VAHİD", "BUTLU", "DONLU", "CENGİ", "ŞÜPHE", "MELET", "ETTİK", "LEMAN", "KAVAK", "HİZİP", "BÖĞRÜ", "REVAÇ", "CİMRİ", "ALNIN", "GÜCÜZ", "RIZKA", "BAYAT", "AYTUĞ", "MEMUR", "BARCA", "GÖMEN", "BİTEK", "KÜSÜP", "SKİLİ", "TAYİN", "MEZRA", "KETÇE", "YENER", "SARIM", "YERCE", "KÜSKÜ", "ENCAM", "HAYDİ", "KETÇİ", "YALIM", "ŞİFRE", "BEDİA", "KEKİK", "UYALI", "BAĞLA", "YAMAT", "SAYLİ", "LEPRA", "MİLEN", "DÜŞLÜ", "MIRRA", "BİÇEM", "UYRUK", "AŞAMA", "RUNLU", "FAHİŞ", "EFECE", "YEŞİM", "MİNÖR", "KAZEV", "KUVVE", "PITIR", "BİYEL", "KENYA", "VECİZ", "ÖLDÜR", "KIZLA", "KLİBE", "İFLAS", "ZIDDI", "MAİLE", "SÜLÜK", "İSSİZ", "KOMBİ", "ÇAYLI", "SAVCA", "NİHAD", "TAVİK", "PEKEL", "RAYİÇ", "ÇEKİP", "İCMAL", "İTHAF", "RİTMİ", "KOŞUK", "TAPIN", "ANDIZ", "CEBİR", "LEVYE", "MENGÜ", "HİKEM", "BIÇKI", "İÇTİK", "AYŞIL", "TÜMLÜ", "ÇÜNKÜ", "CAZCI", "TEZER", "TOPSU", "DÜYEK", "PAYLI", "AKSUN", "MEHDİ", "KERES", "ARDIL", "KORSE", "YUMUK", "AYKAÇ", "COŞAR", "İNCİK", "KIMIL", "KAKLI", "FIRÇA", "OYASI", "TÖZEL", "DİZEN", "KODLA", "DOLUP", "ÖZTAY", "SAÇIL", "ASİCE", "ÇANAK", "ADİSİ", "KETUM", "ÇÖLCÜ", "ZAĞLA", "AZİME", "BERRİ", "AKSAL", "KİRİL", "ANALA", "PİÇLİ", "ÇÖMEZ", "ÇİZEN", "KİTRE", "ARPÇI", "BİDON", "CÜZSÜ", "ALMAZ", "YİTİR", "CEMCİ", "LİMAN", "EŞKAL", "GIDIM", "BEYCİ", "OMALI", "ERKEK", "NESİL", "TEYEL", "KAYCI", "ERCAN", "EKRAN", "KADEM", "SIRSI", "TIRIK", "DEYİP", "HARIL", "PİGME", "RIZIK", "DEĞİR", "HASBİ", "YAREN", "NEYLE", "YARIN", "ÖVEME", "FAYLI", "MUCUK", "TİKSİ", "PAYDA", "GÜRÜN", "ALASI", "TERLİ", "GİYİN", "YAĞIL", "PÖÇÜK", "AYALA", "TEPİŞ", "FİGÜR", "BAYDU", "ENLEM", "ESAME", "İYECE", "ANIĞI", "ADAĞI", "BİŞAR", "DAKİK", "HADDE", "KOFRA", "GÜLLÜ", "ORTAM", "KESİM", "TÖREN", "EKİBE", "AÇTIR", "IŞTIR", "CEVAZ", "TİPİK", "KAŞIN", "ÇİŞLİ", "ABİCİ", "ÇÖĞME", "ETEĞİ", "GERME", "KIZAR", "BULUP", "ENDER", "GÖNEN", "BASSO", "VARMA", "KOLLA", "ÜRKÜP", "YANAR", "CEVİZ", "KÜLLÜ", "SALİP", "FERİH", "GÖMÜP", "ELYAF", "HÜROL", "PALAU", "EMSAL", "SUNAR", "ŞEVKİ", "HATİP", "SÜREK", "KÜKRE", "KONCA", "BURNU", "SERCE", "MÜLKİ", "HAVYA", "SUSAM", "KOLİT", "ÇÜRÜT", "AVİZE", "RIFAT", "LİNİN", "AÇGÖZ", "PARTİ", "TACIM", "ARŞİV", "BİBER", "GIYAP", "SAĞIR", "KLİĞİ", "ODACI", "HANIM", "YENME", "IŞIĞA", "MANDA", "LÜPÇÜ", "HANCI", "SOLMA", "UTTUK", "SEMAİ", "TADİL", "DESEN", "YAVAN", "ZEHİR", "GABON", "GABİN", "KÜRDİ", "ÖZBİR", "AHRET", "KOPAR", "RAMPA", "TAYFA", "ZÜMRE", "OKTAR", "HARCI", "UĞRAT", "ÖNLET", "DAMIT", "ÇEPİN", "YIKAN", "DOKUT", "VIZIL", "DİLSİ", "FETİH", "SELBE", "HIFZA", "RECMİ", "HALCİ", "NEFİR", "YENİP", "AZALA", "HAPLA", "FARUK", "MERAK", "YIĞMA", "ETLET", "HİTLE", "ÇOKAL", "PENYE", "AĞNAM", "BEDİK", "ZIPSI", "TEKLE", "BOĞUM", "ADALI", "RUFAİ", "SEMİR", "TAŞIŞ", "BURCU", "ÖRTÜP", "PAÇOZ", "LODOS", "KUPSU", "İLMEK", "MOTOR", "ARTIL", "GEREN", "ONAMA", "YUYUP", "APSİS", "SİRTO", "FESLİ", "YİYİŞ", "PISIP", "ÇIYAN", "HABİS", "MIZIL", "MEBDE", "ÇARCI", "HUSYE", "KAYIR", "TEFÇİ", "KERİH", "ÜZMÜŞ", "YOMRA", "AMPUL", "ÇAĞSI", "İSMEN", "KİMYA", "AKMIŞ", "KARIN", "KÜSUF", "AVENE", "KİTAP", "PATLA", "LOKUM", "GRUBU", "PAPEL", "KABUL", "SUDAN", "PAKEL", "TALİA", "MELEK", "EVSEL", "KÖMEÇ", "ÇORLU", "MELES", "SİGAR", "ODAĞA", "ŞİLEP", "DOLAT", "KİTLİ", "ÜRELE", "TOKAÇ", "TÜKET", "MIŞIL", "SUSKU", "KAHİR", "ÇATIR", "DİYOT", "DÜŞEN", "ÇEMEN", "DEİST", "NAKŞI", "TÜMER", "BAĞIM", "HELEN", "BULLU", "PEREN", "TEFLİ", "NALIN", "ÇATAN", "UÇLAŞ", "BACAK", "ASİDİ", "KÖRCÜ", "AKÇIK", "KAMGA", "KEŞLİ", "TÜLAY", "MAİDE", "YEKTA", "ŞENEL", "AYVAN", "FARLI", "MUNİS", "LADİN", "ADEDE", "BODUR", "ZIPÇI", "TOZMA", "PİKAJ", "ERDİM", "GÖNYE", "ERBAŞ", "SÖKÜM", "YİRİK", "FESİH", "SAYCE", "TISLI", "BAŞOK", "MARTI", "ZÜLFÜ", "ÇAPMA", "ARDAK", "NABZA", "MASÖZ", "OKÇUK", "YALAZ", "RUHEN", "SAMİM", "EDELİ", "EŞSEL", "CIZIR", "YELLİ", "ATLAŞ", "OTSUZ", "ÖLÇME", "SENEK", "AKSİM", "EMVAL", "YEĞLE", "UYGAR", "ÖRGÜT", "GİYİT", "DOKSU", "SOMER", "ROMAN", "BOZCU", "AKGÜL", "TÜKÜR", "HÜNSA", "BÜNYE", "KÖSÇÜ", "ÇEPEL", "BATSI", "BİTİM", "İHZAR", "EMSEL", "FEVCİ", "HABER", "İLKLİ", "KÖZLE", "HOTOZ", "KELSİ", "SÖKEN", "KIRKI", "HERİF", "ANGUT", "BATLA", "GIDAK", "İTMAM", "EKMEZ", "ŞENLİ", "SİYEN", "TENCE", "HAZIR", "ÖZÜAK", "DÖNÜM", "ÜREME", "NAKIS", "BURUN", "TAHRA", "RAKUN", "BAĞIR", "KAZAN", "AKİDE", "AĞLAŞ", "ÇÖKEN", "SEZER", "KASET", "GÜDÜM", "ALİSİ", "AÇILA", "POPLU", "USARE", "KÜÇÜK", "MİMLİ", "İKONA", "GÖNSÜ", "KAYBI", "UYMUŞ", "TÜYCÜ", "HİNCE", "GURUL", "YORUM", "TEPİP", "SELDA", "İNADA", "SÜRÜN", "İTESİ", "MARDA", "TIKAT", "PAYCI", "TUYUĞ", "YARAR", "YIPRA", "PEDAL", "HAMSİ", "SERAP", "CEMRE", "YAMÇI", "IĞRIP", "NAZAL", "BİNİP", "YAVAŞ", "TREND", "SMACA", "GÖÇÜK", "HUMAR", "COPÇA", "DÖRDÜ", "EVRİM", "YOLLA", "GEVİŞ", "KAVİM", "KUŞAN", "MAZOT", "BÜTAN", "GOCUN", "NANLI", "SINAV", "VARİT", "BİTAP", "BÖLÜK", "HAKİM", "RAMİZ", "SENİT", "DIŞLI", "KULLU", "ENFES", "AKAJU", "CEREN", "ORGCU", "DÜĞME", "GAİBE", "AYRAÇ", "ABLAN", "SÜNEN", "HARİS", "PİKAP", "LAVLA", "ALİLE", "PİLAV", "SAYIN", "CENAB", "DERUN", "KEYFE", "BANLI", "GURTU", "HOPUR", "FUHUŞ", "HİTAP", "KIYAS", "ARGUN", "FIKRA", "AJİTE", "UYGUR", "CEMAL", "İKİCİ", "DAMLI", "KUSAY", "YAŞAM", "DÖLLÜ", "BARUT", "ESLAF", "BRONZ", "EFECİ", "YILSI", "ABRAŞ", "AŞSIZ", "KAVLI", "BEDEN", "NALAN", "ARSIZ", "GÜVEZ", "SITMA", "JETON", "KÜNGE", "GEVŞE", "FADIL", "İZLEŞ", "YAĞLI", "KILIR", "VAKİF", "CÜNHA", "FIRDA", "TAVCI", "EMMEZ", "SEMCE", "BAKIR", "İÇİCİ", "TERAS", "AHMER", "FASIL", "İNSİZ", "DİNİL", "ZULMÜ", "HAVVA", "TOYCA", "STATÜ", "BIKAN", "UÇARI", "VAHİY", "HAREM", "KAKIÇ", "MUCİT", "YİTİK", "ÖRSEL", "İLHAK", "DÖKEN", "KÖRPE", "BARDO", "BURMA", "SÜYEK", "YAŞSI", "ŞAŞAA", "DİDAR", "ETNİK", "YEMİŞ", "CİBİN", "EŞTİK", "ŞİLİN", "KANAL", "KALIŞ", "HURMA", "SENCE", "EGECE", "EKOLU", "AŞIRI", "KISIL", "AKDET", "ÇAĞIŞ", "AFFAN", "SEPYA", "MASNU", "TURŞU", "OKUME", "AFİLİ", "CENGE", "AŞMIŞ", "SIĞIN", "AFŞİN", "ARIZİ", "ADİCE", "BASKI", "İKRAM", "OKTUĞ", "AHDİM", "LEHÇE", "VAKUM", "VÜSAT", "ŞİŞLE", "GOTİK", "ARİFE", "SAKIZ", "SENAY", "KARIŞ", "YAZIP", "VEHİM", "FÖNCÜ", "YENİK", "TARCI", "ERKLİ", "KIBLE", "BELAM", "HINIS", "TOTEM", "YAKIN", "UYDUK", "BOYCA", "CEZVE", "KAVUŞ", "KADRE", "AYMAN", "İMLEÇ", "GALCE", "KAYSI", "KÜRCE", "KIRIŞ", "GÜLSÜ", "KÖSNÜ", "ZIVIR", "YIKIP", "DİĞER", "HINCI", "BOĞUP", "TIBBI", "PİNTİ", "TUGAY", "TACİK", "TAVUS", "TAPIR", "FIRIN", "KEBAN", "TEFSİ", "AĞICA", "SAMSA", "İSLEN", "FLORA", "ŞALCI", "VİRAJ", "ÖVÜCÜ", "ETMEN", "MEŞİN", "İZAFE", "VARGI", "KUZLU", "PAPAZ", "VASFİ", "YAKSI", "AKÇAR", "GÜZAF", "DENEK", "ÇULLU", "BRÖVE", "ADABI", "KAÇIN", "ÇEMİŞ", "İZNİM", "KATKI", "BOZSU", "YEDİZ", "TAVAF", "UMDUK", "VASFI", "GOLCE", "İÇKİN", "ÇEKİL", "GÖRGÜ", "UYSAL", "OOSİT", "HİZAN", "HAMUT", "GİYME", "SESSİ", "KOVUP", "PRENS", "BASLA", "SÖKÜL", "SALTO", "TONYA", "SÜMER", "GALAT", "KABAK", "KLAPA", "BEDEL", "DİKTA", "FİRAR", "SAVUN", "HAZNE", "ÖRSLÜ", "İTELE", "URUĞA", "İYİSİ", "GEDEN", "GİZLE", "KABZI", "ŞOSON", "SALİK", "AİTSİ", "GÜLLE", "KİNSİ", "SIRAT", "OLUCU", "BİNER", "BÖLGE", "ŞAŞMA", "ŞEFLİ", "KARNA", "OTLAN", "AZMAN", "GİZLİ", "SANAL", "EVKAF", "BENLİ", "SÖZER", "SIĞLI", "SİVİL", "DALMA", "RESME", "YAZLA", "POZLU", "FITRİ", "SONCU", "VAMIK", "İÇMEK", "DAĞIL", "KESAT", "KUSUP", "SAHİR", "DİKTE", "ACEMİ", "SIYIR", "CEMET", "YAZAN", "GEÇÇİ", "HUYLU", "ALYON", "SOMUR", "DÜRÜP", "FİKRE", "OYNAN", "TEDAİ", "MATLI", "EREME", "BEKLİ", "TİRŞE", "ŞETİM", "FIKHI", "LİNCİ", "HAZİN", "TIMAR", "İŞLEK", "DALCI", "ZENLE", "HAZRO", "SÖĞÜŞ", "FENOL", "ROTOR", "ÖNERİ", "ÇENEK", "YEREY", "ANCIK", "YEKİN", "MAKET", "HALİS", "SAHLI", "ABOSA", "ZEYİL", "GİDİN", "TEDAŞ", "ENDAM", "BAŞÇI", "PANDA", "BENZE", "SAZCI", "ONGUN", "AŞILI", "MAYIS", "BEZEN", "SUNUŞ", "BAĞIŞ", "FESHİ", "DÖKÜP", "ŞAHAP", "VOTKA", "ZABIT", "LÖKLÜ", "YÜZLÜ", "NOTÇU", "EREĞİ", "BULCA", "KUVÖZ", "ERBİN", "BOĞAÇ", "KABUS", "ÖNSAL", "GÜMEÇ", "KOLZA", "SEHİM", "DULDA", "BİLAL", "LAÇIN", "SİNCİ", "EYVAN", "VAKUR", "TEZAT", "YOLCU", "HIZSI", "SAVMA", "İFADE", "AYKAN", "EFRUZ", "LOKAL", "GÜZLÜ", "NAİLE", "SATHI", "AYVAZ", "AFSAL", "KARAY", "İRSEN", "İFSAT", "KAZIŞ", "HIŞMA", "AYNCA", "CENAN", "MASÖR", "BUZLU", "GAİBİ", "NOTLU", "İTİCİ", "İTALA", "HERZE", "KADİM", "SANER", "İPUCU", "KABLO", "ESTİK", "DOKUZ", "İRMİK", "UKALA", "MELEN", "GÖĞSÜ", "BOYNA", "KILIK", "NONOŞ", "BİRİM", "BEMOL", "REŞİT", "TUTAÇ", "YENCİ", "NODUL", "PİŞEN", "BORDA", "AZLET", "YETİŞ", "BOMBA", "HAKÇA", "NAFİZ", "BÜŞRA", "ENZİM", "CÜCÜK", "DEVİR", "TEREK", "TARAF", "SETİK", "FİNCE", "KAYME", "GÖMÜT", "HODAN", "EŞİCİ", "SÜNME", "YATAN", "ÇATIL", "SAKIR", "TINAZ", "MAÇÇI", "TIKTI", "BEKİR", "HAZAL", "AMADE", "ÇATIŞ", "ÖRFLÜ", "EZMEK", "AYNAZ", "ÇIKAR", "GONGU", "ÇÖZSÜ", "ÖLÇÜP", "NEVRE", "KEKRE", "KEMRE", "UŞAĞI", "KALLI", "AKMAN", "VERİP", "HANCA", "DEVCE", "HESAP", "YIKAT", "KONİK", "LEZAR", "ZİGON", "AMUDU", "SEKLİ", "YEMSİ", "ZARİF", "DAVAR", "MENET", "LORLU", "BİLEN", "DOLUŞ", "NEHİY", "GÖLÜK", "SEKİL", "EOSEN", "TAOCU", "ÇİTİL", "KILLI", "TAMLA", "KAŞÇI", "SACCI", "YEREL", "SEKME", "TACİL", "CİVAR", "KAÇAN", "FALLA", "ŞULAN", "KLİMA", "ÜSLÜK", "AYNUR", "FONEM", "İTMİŞ", "DÖŞET", "FİGEN", "ŞENOL", "ZELVE", "İMBAT", "ARIER", "HULUS", "LÜMEN", "GÖKLÜ", "UZMAN", "GARAJ", "DALAY", "ATSIZ", "SİREN", "AKDİL", "GÜMLÜ", "ATİYE", "KILIF", "FÖNCE", "BİNME", "VESİM", "SEÇKİ", "ALPLI", "ÇATDA", "MİSEL", "YÖNCÜ", "OMACA", "CENİN", "ÇOĞUZ", "TİPLİ", "RUBLE", "KUYUM", "UZVUN", "LOBUM", "SAHAF", "KUBAT", "MERAM", "EBADI", "TULUN", "TARLA", "BATIM", "ZIHLI", "AZLİN", "VATAN", "UYASI", "HASIL", "FİŞLİ", "RESUL", "ALLAN", "ÇİZGE", "MOREN", "SİLME", "İSKAN", "DENİM", "ÇÖRTÜ", "SEREN", "İLACA", "TAYİP", "ÇAYAN", "AMBAR", "YALIN", "FERİT", "FLORİ", "İZLEN", "DÖKÜM", "ÖŞRÜN", "ŞİRAZ", "İYODU", "TANER", "DÖVÜN", "ÖRTÜŞ", "ABİCE", "UNSUZ", "BATLI", "FOLLU", "TUĞLU", "İPLİK", "SAPIK", "VİZON", "SOKAN", "FONLU", "DERSU", "MANTİ", "PEKER", "İPHAM", "SEHİV", "HAYFI", "OLCAY", "KANCI", "BOYLA", "SAHNE", "KENAN", "YÖNLE", "FAROE", "DÜĞEN", "DOYAN", "LATİN", "TIKIŞ", "AYBEK", "TUNİK", "AKTİF", "GÖLCE", "MİLİS", "TOLCA", "UĞRAN", "NUMAN", "ENKAZ", "DİŞLE", "CEDDİ", "GÖÇÜŞ", "REBAB", "YIRCA", "ANACI", "EFLAK", "BALCA", "ASİLE", "KAZIT", "GEBZE", "MODEM", "DURMA", "KALIP", "KİKLA", "TAKIŞ", "SEMAH", "ŞAHNE", "MAHUR", "TEĞİN", "HALAS", "HIRSI", "FİTSİ", "EBCET", "RİCAL", "ALPAY", "ARİCİ", "SOYAN", "ZİRVE", "SİRKE", "NAZMI", "OĞLUM", "GÜCÜM", "ÜTTÜR", "AKREP", "KESRİ", "RAFLA", "ZİHNE", "PİYAZ", "ÖZDAL", "ERALP", "FERDA", "AZLAT", "UZLAN", "TEMAS", "TIKAÇ", "BOZLU", "NAZİF", "DİŞÇİ", "ÖZTAŞ", "ÇİMCİ", "GÜVEY", "CİZRE", "MİLET", "SKALA", "LAZSI", "MUMCA", "NOHUT", "KAMAŞ", "İĞFAL", "NEFİS", "TIKIR", "KORCA", "PESLİ", "BULAK", "HACET", "HAZIM", "KÖRSÜ", "TİMÜS", "KESKİ", "KITIR", "NECİP", "HAFIZ", "ŞİŞİK", "KALCA", "ŞEMSE", "VAROŞ", "FECRE", "ESRAR", "SUSTA", "LIKIR", "YETKİ", "SOLAK", "SIYGA", "ÇELEK", "CİBRE", "NEHİR", "DEBİL", "ARİYA", "TÜFLÜ", "DEMİR", "ERDİK", "MÜHİM", "SAMUT", "RAKIM", "LOTUS", "TOZCU", "CESİM", "VATKA", "SORAN", "BAKIL", "HAVCI", "HAPSI", "ENİĞE", "AKÇAM", "UÇAĞI", "GNAYS", "ZUMLA", "FERMA", "KAZCA", "PAHSI", "BURCA", "BÜYÜK", "MÜMAS", "POLKA", "VARTA", "ZARCI", "AKSAK", "RÜTBE", "ADNAN", "DİDON", "PİKET", "BOYAR", "ENSİZ", "FUAYE", "LAZIM", "İMACI", "PISIL", "ELCİK", "BOLCA", "CICIK", "ROLLE", "YEĞİN", "ÇELEN", "İÇLEN", "RÜKÜN", "SALYA", "UFKUN", "YATIŞ", "VELUT", "KELEM", "KIYIM", "HİNDİ", "UYUMA", "MUKNİ", "TAŞMA", "CEZMİ", "SUBRA", "ÇORAK", "REMSİ", "DOLUM", "KÖPEK", "ARTUÇ", "BAHAİ", "NİKEL", "HİTİT", "İCADA", "NEYLİ", "ARALI", "ZEVCİ", "İMSİZ", "NAKİT", "BOMBE", "AMPER", "AVARE", "İŞLEV", "BELKİ", "PEYKE", "TÜREL", "RAHME", "KİRCİ", "AMPİR", "GRUBA", "TUHAF", "OYALA", "SIĞCA", "TÜMEN", "İLKEL", "FİTRE", "SOKMA", "ASABA", "KATAR", "TAKAS", "TUTAN", "DİPLİ", "BEZCİ", "ÖZGEN", "PESÇİ", "ÇEKÜL", "VİNCİ", "GÜNCE", "ÜSSÜZ", "KIRIM", "AKSİN", "TELLİ", "KÖYCE", "CACIK", "ASAMA", "BOĞMA", "LİVAR", "IRKSI", "GÜNLE", "TOĞUM", "FEYHA", "TERZİ", "DOĞUL", "EĞREZ", "HAMLE", "KORKU", "TAŞEL", "SEBİL", "OLALI", "KOLPO", "MALLA", "BAĞIN", "FASLA", "ÖKMEN", "AĞGÜL", "KOKUL", "ŞAFİİ", "AZAMİ", "MIHÇI", "NÜFUS", "HASMI", "TAKÇI", "ÇIKIT", "TEKLİ", "DONAM", "DİZGİ", "KESİL", "SANCA", "TURLU", "GERİN", "KAMAN", "DURNA", "SABUR", "BIKMA", "KISSA", "SİHİR", "ISICI", "HAYBE", "ZARAR", "NAKİP", "MİYAZ", "EZMEZ", "MÜHRE", "SAZAN", "BETİM", "ARTMA", "ŞÜMUL", "FENLİ", "SETER", "DAĞLA", "HİCVİ", "MAKUS", "DALGI", "KEMHA", "ACICI", "ERBAP", "YUMUŞ", "YOKSU", "BELEK", "KESLİ", "KOLON", "ERSEN", "YAŞAN", "DİREN", "ERMEK", "YAYLI", "TABLA", "CEZRİ", "ULUMA", "SEKİP", "RAMAK", "NÜLÜK", "GACIR", "BAŞOL", "URGAN", "FIKIH", "KEYFİ", "BELİR", "HUTUT", "TUZAK", "DEĞİŞ", "TALLI", "EDHEM", "TAKKE", "SÜRÜL", "ILGIM", "SAKIT", "VERDA", "KAVLA", "SUSAT", "NEYCİ", "SABAH", "ZİKİR", "TÜVİT", "KERİZ", "BİTÇE", "SIKLI", "ADİLİ", "SEBEN", "KATIR", "EVRİL", "DUHUL", "GADRE", "GUSTO", "YANIK", "DUYSU", "BLOKE", "SARIN", "AKORT", "KLİĞE", "ÇAVUN", "UZLAŞ", "AĞSAL", "AŞTIK", "ADSAL", "GÜĞÜM", "FAZIL", "DİDİL", "KÜSEN", "BOLCU", "STENO", "ÇELME", "YÜZLE", "SEMİN", "EGZOZ", "TAPON", "SEZEN", "BURGU", "UMACI", "PEÇLİ", "ŞOKÇU", "NARİN", "GELEN", "MOLLA", "BÖNCÜ", "ZAMİR", "SEHVE", "YÜZÜŞ", "FESAT", "BUDAK", "KOVAN", "MALUL", "NEZİR", "DALLA", "BÜZÜP", "GEZİN", "SÖNÜM", "ÜFLET", "ARLAN", "ŞAFAK", "NEZLE", "PUSUP", "GAZLA", "İMSEL", "KAHPE", "DÜĞÜŞ", "AZGIN", "EJDER", "MEMNU", "KOTON", "KINCA", "SÜZEN", "KAÇIL", "AYIBA", "AYMAZ", "CEDİT", "URLUK", "TÜMCÜ", "NEVLİ", "GEYVE", "MEDYA", "SAÇMA", "ÇALAN", "KERSİ", "TAMER", "ÇAYSI", "TÜRLE", "GÜDEN", "SIĞIŞ", "DÜZGÜ", "RUNİK", "BALKI", "ÖLÜCE", "TAYIN", "İTAAT", "BÜKÇE", "SELCE", "SİNİR", "KEMAN", "SPAZM", "TALAT", "CIRIL", "YERLİ", "İLERİ", "TONLA", "LİBYA", "MEZAT", "KASNI", "TIRIL", "ÇAVMA", "MASİF", "OVAMA", "CİHAT", "ANTEN", "SUNAY", "BULSU", "ŞUTÇU", "BIÇAK", "PERVA", "ADDET", "BÜKÜŞ", "TAKLA", "DALLI", "ERMAN", "KARNE", "SARAR", "BÜRGÜ", "ŞEVLİ", "İRADI", "YARAN", "VAHLA", "BULAN", "DAĞIT", "SÜHAN", "BÜZÜL", "DÜMEN", "SAVAŞ", "CARLA", "YAZMA", "TÜNLÜ", "İLBAY", "İZAFİ", "ÇİGAN", "NAKŞA", "BİKİR", "DÖNÜL", "DİMAĞ", "ŞİKAR", "ÇIĞIR", "KOBAY", "AZADI", "KOPOY", "TIĞCI", "CÜRET", "ÇİĞLİ", "MAKRO", "TARAN", "NUMEN", "RÖTUŞ", "AÇMIŞ", "ŞAMAN", "TAHİN", "BAKIŞ", "BOCUK", "LİRET", "KAYNA", "ÇIKIK", "CEMAN", "PAZEN", "ULUFE", "ATMAK", "SİLİS", "HADLE", "ÖRELİ", "HATEM", "AZİZE", "DAVET", "ÇANLI", "DEVLE", "VEYSİ", "BESTE", "TOPUZ", "TÜTÜŞ", "İŞYAR", "KEPLİ", "ÇATIP", "TOZUN", "HABİR", "ZANLI", "KOTSU", "FALYA", "ŞEKLİ", "BORAK", "IRAĞI", "COPÇU", "NUTKA", "BUNAL", "HALİM", "KETAL", "UĞRUN", "BEYDA", "HAZER", "BAYRI", "LEYLE", "ÖCÜMÜ", "DÜZLE", "FÜSUN", "GALOP", "TEKİL", "GÖKÇÜ", "HARLI", "TEMEK", "TADAT", "ÖZLÜK", "ÖZTİN", "BEYCE", "SAFRA", "MEDÜZ", "AHBAP", "ERTUĞ", "MAHVA", "PENİS", "ATLET", "REJİM", "SIĞIR", "HELAK", "ÇOPRA", "NEŞİR", "KANTO", "LİSAN", "VEFİK", "KAŞLA", "İBLİS", "EVRAT", "ÖDEME", "AĞLAT", "DÜDÜK", "AKACA", "KİRVE", "CEHRE", "İLGAR", "ŞAYAN", "ERKEN", "FİRMA", "AYSEN", "IRMAK", "DEŞİK", "KAPUZ", "PELÜŞ", "BALIM", "CİLDE", "ŞÖLEN", "ZÜLFE", "KURMA", "NAHVİ", "OYAMA", "SİKEN", "KUVER", "KAMER", "MUZSU", "SİTLİ", "PUNTO", "SEYFİ", "KAZIL", "HAİLE", "DARLA", "MEKİN", "BAHRİ", "EGOCU", "KISIŞ", "YILCA", "HOŞSU", "ÜLSER", "FULAR", "TAŞIL", "GUGUK", "ODMAN", "LEPSİ", "ARTLI", "SALMA", "SÖZSÜ", "BEKİT", "AYSAN", "HERLİ", "RUŞEN", "ŞANLI", "SERUM", "KOLAN", "GÖVER", "KOMİK", "ZÜHRE", "TEZCE", "POYLU", "UZAMA", "BARLI", "ADALE", "YÜZDE", "BİÇKİ", "İRONİ", "TANIŞ", "ŞEYMA", "OMSAL", "MARKİ", "AZADE", "COŞAN", "GÜLÜP", "BIKIŞ", "BİÇİŞ", "ÜRECE", "TIKIZ", "SIÇMA", "SÖZLÜ", "MAŞER", "GEÇEK", "GÜLÜT", "TÜRAP", "ANALI", "TEVSİ", "TERSİ", "KÖPRÜ", "DANIŞ", "ULEMA", "İYİLİ", "BOZLA", "SEYİR", "LİFSİ", "YASAN", "BEDİH", "KUSAN", "ÇİTLİ", "ÜRYAN", "MİZAÇ", "SÖZEL", "İDARE", "ZİKRİ", "EMLEŞ", "LÜGAT", "OSMAN", "YULUĞ", "AĞYAR", "SAÇAN", "HURCA", "TABİR", "SAYIP", "SİSSİ", "IHTIR", "İRİTE", "KÜVET", "TİBET", "AROMA", "SELİM", "TÜYSÜ", "RAKOR", "DOĞAN", "ARAMA", "RUTİN", "YERLE", "BENSİ", "DİKSE", "NESİH", "KILGI", "ALİYE", "EDEME", "SATIR", "SALIP", "KÜNGÜ", "TASNİ", "SAÇLI", "KAKMA", "TAŞLA", "OĞLUN", "FİNCİ", "TAZİP", "ÇÖZÜN", "LAİĞİ", "VURGU", "FERAĞ", "AMBER", "KILIN", "GAİTA", "İSPİR", "CÜBBE", "ŞAPÇI", "CİRİT", "MİSÇİ", "GÜZİN", "NİĞDE", "SAHUR", "BÖREK", "RAFYA", "FOLYO", "GÜMLE", "ACUZE", "OPERA", "BARIM", "SAVCI", "DİĞİM", "VEHME", "BURAN", "İNİCE", "HAYIT", "JİKLE", "YIĞIŞ", "RAFLI", "HAVAİ", "ZEBUR", "İZZET", "BOTLA", "MUŞÇA", "VICIK", "YAĞMA", "KUMCA", "MESUD", "SAYRI", "VAŞAK", "AKSAT", "ESASİ", "ZUHAL", "BELET", "FİTLE", "ZÜHDE", "DÜŞEŞ", "KAPLI", "DOSAL", "PİŞİL", "MIGRİ", "GÖÇÜR", "ATAĞI", "DÜYUN", "RAHİP", "AÇASI", "RAKİP", "CANEL", "TERLE", "TALAY", "SIVAŞ", "ETÇİL", "ORBEY", "İNECİ", "DEMEZ", "GERİZ", "SÖLOM", "ÖRTÜK", "CEKET", "ÇERÇİ", "ÖVDÜK", "MARKA", "KUTAL", "TEBAR", "SETÇE", "BÖLME", "TÜTEN", "YÜCEL", "KONCU", "KUYTU", "NİÇİN", "ÖZRÜM", "PAGAN", "SÜZÜL", "ARKIT", "İFALI", "DEFNİ", "CANLA", "KOLCA", "KALEM", "PELİT", "ODACA", "FEHMİ", "PARKA", "BALLI", "METLİ", "SAPIŞ", "ORCİK", "BİNİL", "HARİM", "İSTOP", "OTİST", "ZİHAF", "HAÇLI", "ÖRDEK", "MAŞUK", "MİRAÇ", "SİNSİ", "EŞİĞE", "KUZEN", "AKŞİT", "YEVMİ", "MEDDİ", "NEMLE", "KEŞÇE", "CAVLA", "KEMAL", "TOKUŞ", "LİSTE", "RADYO", "DELİL", "STANT", "ARPÇA", "KEMLİ", "ZİYAD", "YÜKLE", "KİŞNE", "SIRÇA", "ÇÖMÜŞ", "ATFEN", "ATAMA", "YAKUT", "MİLİM", "LİFLİ", "SIRCI", "GEZİŞ", "GÜDÜL", "GÜREŞ", "EBLEH", "ELMAS", "EKLEŞ", "SAĞIP", "KÖKLE", "ENCİK", "KAÇIP", "MUMLU", "ARABA", "NİNNİ", "MUMYA", "RUMEN", "DEVİM", "LEGAL", "ÜZMEZ", "KÜNYE", "ISIRT", "FENCE", "HAMLI", "SUÇSU", "EŞMEK", "ÇAĞIN", "AKŞIN", "NEŞET", "KURYA", "GÖRÜM", "OKMAN", "RADAR", "ARTIM", "BİBLO", "ZÜHAL", "HAMAM", "ŞEYDA", "TERCİ", "AYLAN", "KAYGI", "KITAL", "CEHDE", "BAHÇE", "MECAZ", "BORUK", "GÜNLÜ", "KAMLA", "MAHUT", "DOĞUR", "İKAME", "DORUM", "VERİM", "YAHYA", "EKSEL", "JOKEY", "MEZAR", "NESEP", "ZABİT", "TÜZEL", "TALEP", "YETİK", "TOYLU", "ARKAÇ", "OKYAY", "ASILI", "VEREV", "ARGAÇ", "BOZUP", "FANYA", "MARON", "RÜESA", "DUNCA", "DEYİM", "DAİMA", "KİLİS", "İSTEK", "PASİF", "YILIP", "BUÇUK", "KAZCI", "GÜCEN", "KADIN", "TABUT", "TOPEL", "BAZİK", "MÜRİT", "BİTİL", "ZAMCI", "İTLİK", "DÖNEL", "SALAK", "NEVİR", "SUNAK", "SOLLE", "BÜKLÜ", "MALCI", "NALÇA", "SANEM", "MEYLİ", "MESAİ", "SEVME", "YÜKÜN", "YÜNLÜ", "DARAL", "KURUT", "LALLİ", "YALIT", "CANAN", "KOKSU", "GURDA", "SIZIP", "BİŞEK", "GEDİK", "SERİL", "HAKLA", "SAHİH", "TORNA", "SEBAT", "AKSIR", "EKTİR", "BAŞUÇ", "SOFTA", "ÖTEME", "ASKER", "ASHAP", "DÖNGÜ", "KANKA", "TALUY", "SATIŞ", "SOSLU", "IRKLI", "ALMAN", "TANSU", "AŞKSI", "DOLAM", "ALİCİ", "TUTUP", "METRE", "BASYA", "ÇAKIR", "KALMA", "BASAK", "AKYOL", "AVRAT", "UNGAN", "ÇAYEV", "HORCA", "TÜLİN", "LAĞIM", "TÜRCE", "GEÇLİ", "LAĞIV", "BİLYE", "ÇÖMME", "ALDIK", "ÇARIK", "ALTES", "REDDİ", "YOLUŞ", "SACCA", "SÖZLE", "ÖLÇÜŞ", "KARSI", "TANCI", "SATEN", "SİSEL", "ÇİMSİ", "KONGO", "MARUL", "TEKNE", "KUTUN", "ŞEYLE", "BÖLÜN", "AZMİN", "YOLMA", "BÖBÜR", "UZAĞA", "FİNİŞ", "NAMUS", "MORAR", "OTLAT", "FOSİL", "KANON", "DÖNER", "AKALI", "KUZİN", "METİS", "FRİSA", "BANYO", "SEÇİP", "BUDAT", "NALLI", "GUSÜL", "GÖNLÜ", "FAZCI", "LAFLI", "ODLAN", "BALİĞ", "KOMAR", "ÇUBUK", "FUHŞU", "YABAN", "MÜFTÜ", "ORAĞA", "VEDAT", "HABİB", "KULCA", "KÖYLE", "FATSA", "ÜLFET", "CERCE", "DOKLA", "GAFUR", "CİDAR", "KOPYA", "DİZEL", "CUŞİŞ", "YABGU", "YELEK", "LUGAR", "TAPIP", "EZGİN", "OKLAN", "EBELE", "RAMLI", "TÜTÜL", "SELEN", "VAZET", "GİRİŞ", "TAVIR", "ACINI", "BOYLU", "TOKUR", "MASAT", "TUZLA", "SAPLI", "VAKIA", "YORUP", "POYRA", "PEKÇE", "PEŞİN", "ÇİPÇİ", "MAMUR", "KATMA", "UCUBE", "ARKLI", "DAHLE", "SAFÇA", "TAKIL", "YALCI", "BABAÇ", "DÜŞÜK", "KIYMA", "KAZMA", "RENGİ", "KARST", "FAİKA", "ÖRTEN", "MOZAK", "KUDUR", "BİLAR", "TELCİ", "GAUSS", "KASAN", "İŞSİZ", "GEÇİT", "RAYLI", "DİKİL", "KAYŞA", "FESÇİ", "STADI", "GABRO", "YAZAR", "İTTİK", "AKSET", "DERDE", "YERCİ", "YILLI", "KANLI", "LİYAN", "NÜFUZ", "AYGEN", "HORLA", "OCAĞI", "DOĞUŞ", "NİSAN", "ÜRKEN", "MERDİ", "KETLE", "ERTEN", "LAVLI", "İNZAL", "İSTİM", "AKSOY", "SÜREÇ", "KAYIN", "TÜRET", "SEZAN", "EDİBİ", "OBRUK", "HEVES", "POTLU", "MAOCU", "GRİCİ", "EZEME", "BENCİ", "BAGAJ", "OYUĞU", "ZİHNİ", "TAŞAK", "ALİCE", "HİDİV", "HARİÇ", "DİKİŞ", "SİVRİ", "AZABI", "BATIL", "DELİP", "GUATR", "SIFIR", "TERES", "GÖNCE", "SAYLE", "ÇAĞIR", "KATÇI", "YİYOR", "HOLLÜ", "TUTAK", "BURUŞ", "ÖLÜSÜ", "BANSI", "TABLI", "SUVAR", "STADA", "NEKRE", "HÖDÜK", "DÜVEL", "MİSİZ", "ERGÜL", "LAFSI", "ŞENAL", "NİSAP", "BİROL", "EBEDİ", "BANIL", "HIŞIR", "KASAP", "ŞÖYLE", "VEZİR", "MİMCİ", "NAZAN", "YETİN", "MUHAL", "ŞERİR", "AHLAN", "KUTUR", "OYSAL", "DURAN", "KAPAK", "KABIN", "ACARA", "CİPÇİ", "MEMBA", "TIBBİ", "İMALE", "OYTUN", "MAYNA", "AYBAR", "ÇAĞLA", "ERİKA", "ÇORUM", "SEZİP", "EŞEME", "SAHRA", "TOPLU", "HUMMA", "İMSAK", "SINIF", "TÜMAY", "RODAJ", "VASAT", "YÜREK", "KAVRA", "ABONE", "ILICA", "KATSI", "SAKAF", "KAYIK", "ÇELİN", "GÖVEM", "BOTLU", "MİMSİ", "RİNDİ", "SONLA", "PELTE", "SÜTLE", "SAVSI", "İNLEN", "ADACA", "İÇESİ", "OLANT", "ZEYNO", "BÜZME", "TELSİ", "ZÜHDİ", "NİHAN", "SOMYA", "LÜPLE", "DONMA", "HAŞİN", "RADON", "UFALA", "KINAN", "DİSKO", "KISKI", "PİTON", "PİNES", "LİBRE", "VURUK", "GAYET", "UBEYD", "SABRI", "BOZAN", "ARDAN", "NAKLİ", "BİKES", "HUDUT", "CİLDİ", "İZALE", "VAKİT", "ÇÖLSÜ", "RÜSUM", "SARİH", "PATÇA", "VAHŞİ", "BOPÇU", "ŞAPLI", "SİLİP", "NEVAZ", "ARTIR", "ÜTEME", "ERGİN", "ŞAHSİ", "BAHSİ", "SÖNÜP", "EMDİR", "YİTME", "ASGAR", "AFYON", "SEKTE", "BİTÇİ", "BİLGE", "ÇAMLI", "DÜRÜL", "ZIBAR", "TOZAR", "ŞERİK", "BETİK", "BELGİ", "UMMUŞ", "KAĞIT", "KİTLE", "ZEYLE", "DİĞİN", "KONSA", "SAYLA", "UŞKUN", "BEŞLE", "GİTME", "PATLI", "DİKÇE", "İNEME", "BERKİ", "KEMİK", "LEZİZ", "AÇLAN", "GEZİP", "KAVLE", "YAPAN", "KAVAL", "TAKİM", "CAMLI", "URSAL", "BİNLİ", "YILAN", "CİSME", "YIĞAN", "ESBAK", "KİRSİ", "TATMA", "TİLEN", "AYYAR", "FRİGO", "HASUT", "KÜÇÜL", "SAYAN", "GÖNÜL", "ZANKA", "AYRIL", "KAÇIŞ", "TAKLI", "YULAF", "AĞACA", "GÖÇLÜ", "SIKIM", "TAKİP", "DİZEK", "MÜRUR", "UÇLUK", "TOZUP", "VİRDİ", "ÇIKIL", "AMORF", "TAVSA", "DÖŞÇE", "OKSAL", "FAKSI", "BAHTI", "KRANK", "SEVAP", "ÜSTLÜ", "EMAYE", "SAVUL", "KATLE", "YAYIM", "HEREK", "BERİA", "IRKÇI", "SIKÇA", "SÖNÜK", "GRİBE", "SAKLI", "SAVAN", "ESELİ", "ACLAN", "SIÇIL", "DOĞAÇ", "EĞEME", "MEYCE", "MEYLE", "KAŞLI", "KILIP", "NİLAY", "RAHNE", "GÖZÜK", "GENOM", "İLKAH", "ZERLİ", "ÇIKIN", "ANLAŞ", "TINLI", "MANEJ", "ANTRE", "HUMUS", "CİSİM", "NALLA", "TÜTAV", "KAÇSI", "KOÇAŞ", "İVEDİ", "CAĞLI", "RÜKÜŞ", "HEDEF", "BASSI", "ANLIK", "ÇUPRA", "GÖZDE", "UMUDU", "LATİF", "KÖRÜK", "ASRIN", "ŞİŞÇİ", "VAPUR", "İZSİZ", "CEPSİ", "DEĞİN", "SORUŞ", "TECİL", "DARBE", "İHRAZ", "ASUDE", "ERİĞİ", "ÇALTI", "EKELİ", "KAKIŞ", "SAÇÇI", "ŞELEK", "PORTO", "SELİS", "UYARI", "UZOLU", "GEÇEN", "HAŞİŞ", "ÇATLI", "FENSİ", "HERLE", "GÖÇÜP", "PIRIL", "İLENÇ", "PİPET", "OYUCU", "FITIK", "ÇIĞLI", "EKLEN", "YARAK", "AMACA", "FETHA", "NASIR", "ÇİLCE", "MAFİŞ", "GAVUR", "TIKLA", "ASİST", "FİKRİ", "MÜJDE", "YÜLÜK", "ANİCİ", "SAMİR", "GÖLLÜ", "SİNME", "MAKTU", "BOYUN", "ATALA", "KONUP", "LAZER", "RIFKI", "YUVGU", "BAZSI", "NEFSE", "ONSUZ", "ALTIK", "SAYIL", "KURUŞ", "RETLİ", "ÖZSAN", "BALON", "GÖRÜP", "FRESK", "MİADA", "SUNUL", "SEVDE", "ŞIPIR", "VAHYİ", "DENGE", "KEMAH", "BASTA", "EMMİŞ", "ROPLU", "GÖREN", "İFHAM", "ENVER", "KORZA", "KAVUT", "ÇINGI", "İLGEÇ", "EMELİ", "IŞILA", "TOPUR", "ASABI", "SEDEN", "HAKÇI", "YÜZÜP", "EPİĞİ", "MENUS", "AKKÖY", "HAVAS", "GAYRI", "REVİŞ", "PİNEL", "MODÜL", "İSTEM", "AMACI", "OKŞAT", "GELME", "EŞHAS", "YEGAH", "MARUZ", "MEZRU", "ŞEMSİ", "BİNAY", "OYUĞA", "ÖDLEŞ", "KOPEK", "PUTÇU", "DONUŞ", "LÜFER", "KIRCA", "KİMSE", "PASSI", "YAPAK", "İVİCİ", "SAYIM", "UNLAN", "FALAN", "EKMEL", "KISAN", "ÜTÜLÜ", "YASÇI", "YARMA", "AKMAZ", "İŞRET", "AVLAK", "BATIŞ", "KONUM", "MACİD", "İFTAR", "MAADA", "YUMUP", "NEJAD", "TUZSU", "TAŞIM", "RUSYA", "GAFLI", "ÇÖKÜM", "SANCI", "YARAT", "ÖPTÜR", "DOLAY", "İÇTİR", "PAKET", "ACEZE", "BAŞAR", "KOVUK", "ÇATLA", "HINCA", "REFAH", "ÇORBA", "ÇAKMA", "TOZAN", "MEVTA", "ÖZSÜZ", "YANAN", "TARAK", "TOPİK", "YATAK", "DADAŞ", "VİTRE", "COPLU", "SOKUR", "KURAM", "PİŞİK", "KATIŞ", "BEYNE", "HAVUZ", "HİCRİ", "PUSAT", "VAZIH", "LAKİN", "BECET", "USLAN", "TELİS", "ÇÜKÜR", "LASTA", "BAYRU", "PİSSİ", "ŞIPKA", "MUŞTA", "GEÇİN", "KİLER", "CIRTI", "SANIL", "KILAN", "YENGİ", "ONDUR", "GİDİP", "YAKİN", "SEMİH", "ÇIKRA", "MAFYA", "VÜCUT", "LAVTA", "BARON", "LİPOM", "KÖREL", "MEÇSİ", "SKİCİ", "SIÇRA", "KAZSI", "NAKIŞ", "GAYYA", "BÖĞÜR", "SİMAV", "ÇAPAN", "DERİŞ", "SACİD", "AŞİNA", "SAĞMA", "MALYA", "ZUHUR", "PENÇE", "DAĞLI", "HİLYE", "TİFÜS", "RAKET", "CEVZA", "HURRA", "YÜZER", "CEMSİ", "KİPÇİ", "SÜKUN", "MORCU", "AMİNE", "DUYUM", "HARAR", "LEYLİ", "SANGI", "AHLAT", "AĞLIK", "SATIL", "AZAMA", "DOLAP", "ROLLÜ", "FETHE", "HİCAP", "TUŞLU", "YUTUŞ", "İĞREN", "HASAN", "DEĞİM", "CIZLA", "BİNEK", "HAFÇI", "OMLAN", "KİRPİ", "KAYIP", "SÜTLÜ", "LADES", "AKÜLÜ", "MİLİK", "ÖLGÜN", "DÖKME", "ORHAN", "YÜRÜN", "FELLİ", "ERİĞE", "TIPÇA", "DEFET", "HATLI", "REVAK", "BAHSE", "BİÇİP", "ÖLEME", "BEYZA", "KABIZ", "RASPA", "KODLU", "YASER", "GERİP", "BEŞİZ", "FIŞKI", "CAMSI", "GÖKÇE", "KELCİ", "SIKIŞ", "SONRA", "ÇÖĞEN", "HÜZÜN", "KESİT", "PÜSLE", "KÖZLÜ", "DEMİŞ", "DÖNÜT", "CANCI", "PASLA", "FAKİR", "YANAK", "BAGET", "İPSİZ", "HAMUR", "MİZAH", "KUTAY", "TUTYA", "FEDAİ", "GENLİ", "SAKİM", "PEÇİÇ", "ÖZKÖK", "MİLLE", "NURLU", "VALİZ", "TİMOR", "SÜSSÜ", "PINAR", "SİLİN", "HAPAZ", "BUHAR", "HEMZE", "EĞRİL", "BASEN", "FRENK", "SAKAK", "SETSİ", "DÖNME", "MALİK", "KAHRA", "KILIŞ", "TÜYÜŞ", "TEĞET", "MİTSİ", "PİLİÇ", "LAHZA", "TEŞNE", "BULUT", "SUALP", "ZIRLA", "KREMA", "TENLİ", "KAPSI", "SUSUZ", "NANCI", "ASRIM", "ÖZBİL", "ÖZGÜL", "GÜRCÜ", "ÖZSEL", "ATIĞI", "SADUN", "ABACA", "YÜZME", "ÇAYLA", "CİLVE", "KAKÇI", "ŞIKIR", "İLAHE", "CAZİP", "ÇEÇEN", "DİZİL", "MİMİK", "SIRMA", "KURSU", "HOZAT", "OVALI", "DİZLİ", "YAZIM", "KÖHNE", "CİCOZ", "TEKER", "ŞEHİR", "PUSLU", "BOZMA", "KANSU", "YOKÇU", "BÜĞET", "DAHLİ", "DEHLE", "KAMÇI", "HORCU", "HELME", "İLMİN", "HABİL", "BİHUŞ", "İHDAS", "FACİA", "ERKİN", "GÜREL", "TACİZ", "ÇADIR", "ROMEN", "TAMAH", "KUTBU", "SALCI", "LAFZA", "YENİŞ", "BOĞUK", "MEYİL", "EKİCİ", "ARKSI", "SÜSLE", "FOKSU", "YAVER", "TABLO", "DAVUL", "YAYAN", "DUTLU", "KAKAN", "KOBRA", "TARİF", "BARAN", "KAVLİ", "KULİS", "İNTAN", "SAMED", "KINCI", "İNADI", "MANAS", "ÇELLO", "TEMPO", "MAÇLI", "MENFİ", "TIRAŞ", "AÇIĞI", "AKMAK", "ERSEL", "CAYIL", "DOSYA", "TOKUZ", "PİÇSİ", "FOSUR", "BELİĞ", "VAHYE", "HECİN", "DEFLİ", "GİYİŞ", "SAMSI", "ASTİK", "ARTSI", "FÜNYE", "HARBİ", "BOŞLU", "HAMİD", "TOSLA", "AHDET", "TEMİZ", "POFUR", "DONAN", "HİCAZ", "MEYVE", "EKREM", "ÇAĞIL", "İKALI", "YALAP", "BEŞER", "RANDA", "SALAM", "EKBER", "ŞATAF", "HÜCUM", "BİLİP", "ÇAPÇA", "YAHNİ", "SEDYE", "CIYAK", "SAPIT", "BACIM", "SUKUT", "SIĞSI", "FERİD", "ZAYIF", "ÇİNKO", "GÖLCÜ", "NAĞME", "ASİDE", "ZULÜM", "VENÜS", "İNİCİ", "ELEME", "UYAĞA", "TUNCA", "PROJE", "KUCAK", "AĞASI", "GÜRUH", "PARLA", "TELLE", "MABET", "ÖTELE", "AĞICI", "LASKİ", "CEPLİ", "SEVEN", "DÖŞEN", "BATMA", "EREĞE", "ONART", "TROMP", "BELSİ", "ÇAĞCI", "ŞUALA", "OBALI", "KELLİ", "ZATEN", "FİREZ", "ŞAPEL", "ELSİZ", "MİRCİ", "ZERDE", "AŞIĞA", "HAPLI", "BELLE", "GÜHER", "HATMİ", "NAMLI", "SÜTÇÜ", "KOYUP", "OJELE", "GÖZSÜ", "KEZER", "KUŞEV", "AĞZIM", "EMİCİ", "CALUT", "DEİZM", "VINCI", "ANILI", "OVASI", "EŞİĞİ", "HORON", "BALDO", "NURSU", "SÜSÜL", "SOYLA", "KUPES", "SAVIP", "HURCU", "TAKIP", "ETABI", "SÖVÜL", "ASTLI", "KUTSA", "PALSI", "NEFER", "AĞMAK", "EKSİZ", "DİZME", "SERAY", "KELER", "KÖYSÜ", "KUŞLA", "BURUK", "NASIP", "KİLİM", "YEMCİ", "SABRİ", "ÖPMEK", "VİRDE", "ÇİZİL", "AYSUN", "KIRIK", "GEDİP", "DUBAR", "DÖVİZ", "GAMET", "MEVZU", "EDALI", "GEBRE", "KASLI", "EMESİ", "ZALİM", "MUZLU", "DÜBEŞ", "ALGÜL", "LİKÖR", "TORLA", "NEMSİ", "EKSİK", "DIŞÇI", "SEÇEN", "SULAT", "SUHAN", "PAYET", "SIKAN", "KOYUN", "DEKAN", "ÇÖZÜŞ", "ŞERCE", "İBATE", "DOMUZ", "EMRAH", "LADEN", "ELGİN", "GÖREV", "MÜHÜR", "ÜÇGÜL", "AĞDIR", "CÜRUF", "DENGİ", "MAMAK", "KAYIŞ", "GAMZE", "ATAĞA", "YETİM", "DOĞUP", "DİVAL", "PRUVA", "YAKAR", "KIZCA", "BÜZEN", "CEBRİ", "ÇAPIŞ", "HAMSI", "KIŞIR", "FEHİM", "TELVE", "GÖĞÜZ", "NAZİL", "RABIT", "MİSLİ", "AZMIŞ", "GÖDEŞ", "YÜRÜK", "KUPLU", "AZLIK", "FERCİ", "ÜFLEN", "ÇITIR", "SONSU", "TİNER", "VIZLA", "TESTİ", "PAKER", "PÜRLÜ", "GÜZEY", "RÜKNÜ", "İNECE", "ÖZELE", "USSAL", "NEZİF", "NEVRA", "YUMAK", "HÜKMİ", "DESTE", "BAŞAK", "HAKKI", "PİRİT", "YANAŞ", "SUYOL", "FÜCUR", "ACILA", "KAÇIR", "HERİK", "LAZUT", "TAMAY", "SÜSEN", "RESEN", "KAZIM", "AYDIR", "SACLI", "HIRIL", "KAMCI", "ÇEŞME", "CETÇİ", "ATİLE", "KAÇMA", "ECECE", "İLLET", "DÜRTÜ", "YUNAK", "TALİK", "SUNMA", "KÜNCÜ", "YÜRÜT", "SAYSI", "İŞLEŞ", "ÇAPUL", "DÖNDÜ", "KUDÜS", "MİRCE", "AKSAM", "PADOK", "KÜPSÜ", "BİTİŞ", "HİLAF", "ÜZERİ", "AĞSIZ", "TORUL", "ZİFOS", "ZÜLAL", "VAHİM", "ELVER", "KULLE", "HAVAN", "KUDÜM", "SAGAR", "ZEBRA", "ÖLMEK", "BAHİS", "OKAPİ", "RETSİ", "BEZLİ", "BUUDU", "TORTU", "PUFLU", "YANGI", "ÖĞÜRT", "MİTÇİ", "ÜRDÜN", "ASENA", "KARNİ", "HENÜZ", "BOKLU", "GÖBÜT", "HAFİF", "BUNAK", "KAHTA", "KESSİ", "ERSÖZ", "NADAN", "TALİL", "TMMOB", "CİPLİ", "ERKSİ", "MADER", "AVURT", "HAFTA", "OVACI", "MİSSİ", "EKOSE", "OVDUR", "YİTİM", "ÜSSEL", "MORCA", "SİLGİ", "FİİLİ", "MÜZİÇ", "TADIP", "SÜRFE", "TARİH", "BEZET", "ÜDEBA", "ÇİTÇİ", "SİTİL", "FİSTO", "SLABI", "ÖRDÜR", "NAMLU", "KREDİ", "ÇANCI", "ÜTTÜK", "ÇOKLA", "ALMAK", "LAHİT", "RAKİK", "SATIM", "VURMA", "BÖLÜT", "YATAY", "ÇALMA", "BENDE", "GÖRME", "ÖYMEN", "DİKEN", "BİNGİ", "LEVHA", "CÜMLE", "BOYOZ", "KAŞAN", "PATEN", "BOLSU", "NADİR", "VAKIF", "KUŞAK", "ÜÇGEN", "CANLI", "TÜNEN", "MENFA", "KÜREK", "ARTÇI", "YAKAN", "MASON", "AKDİM", "MAHFİ", "ŞIKSI", "ÇİZME", "DÜREN", "FİLİZ", "KİBAR", "FUNDA", "DUTÇU", "ÖZDEN", "ÖNGEL", "DEREN", "PİŞİR", "CAYIŞ", "SOLCA", "GICIK", "YAĞIN", "KİNİN", "ÖZARI", "TADIL", "AĞALI", "İSMET", "PÜSÜR", "YANIP", "SALAT", "HANEK", "SEMEN", "CADDE", "ELİPS", "KEPEZ", "EĞMEK", "CANEV", "ESKİT", "İNDİK", "ULAĞA", "UÇKUN", "RUHSU", "ÇERAĞ", "GÖZET", "DİKİP", "KALBE", "NOKRA", "TADIN", "AMİGO", "SÜLÜS", "ARGON", "ZIRVA", "AYAĞI", "ÖKKEŞ", "DİKLİ", "SUNUP", "ÇÖZGÜ", "YAZGI", "TOĞUN", "DONAT", "BANAN", "DALYA", "GİRİM", "ANSAL", "KIYAM", "ELEĞE", "BADAS", "BOĞAZ", "BOZCA", "MELUN", "DÖNEK", "SİBEL", "PARKE", "TEMEL", "KEKÇİ", "REVAN", "ATMIK", "DÖŞEM", "ÖLÜLÜ", "ZECRİ", "TALHA", "BALAR", "YÜSRÜ", "GUDDE", "ÇOLPA", "POSOF", "YULAR", "SAMBA", "KONUK", "KEMİR", "HARTI", "TAŞRA", "NASİP", "LOTÇA", "FUHŞA", "MELİK", "İRADİ", "KAŞSI", "NECLA", "ÇIKIŞ", "DOYUŞ", "HANSA", "DERİM", "HAKEM", "ETKEN", "SAĞLA", "DOĞRU", "SELBİ", "PÜTÜR", "BİCİK", "KUMAN", "RAKAM", "NİKAP", "BEJLİ", "TÜRBE", "AÇILI", "DİKEÇ", "DALGA", "PASAK", "İŞLER", "SERAK", "TEKÇE", "BANDO", "ÖLÜCÜ", "KİLLİ", "UZLET", "YARIL", "DETAY", "DİPLE", "EVİYE", "OKSAY", "KAYAK", "BEZME", "LEYLA", "ETÜDÜ", "SENİH", "RUHAN", "UDUMA", "TUŞÇU", "PERUK", "HAVLİ", "TEVKİ", "ŞERİF", "BULUN", "MERES", "DURGU", "ÖKSÜZ", "KAVKI", "CIVIK", "TULUP", "ECELE", "İKİLE", "SEVİŞ", "KÖRCE", "SÜREN", "TARİZ", "GÜNCÜ", "POMAK", "SIZIŞ", "KOLYE", "KATIP", "ŞİŞEK", "SANSI", "KASEM", "DEMEK", "ÇİMEN", "ŞAHİT", "SELLİ", "ÇİNLİ", "YAMUL", "KEREM", "KILIÇ", "KÜRSÜ", "KINIK", "EPECE", "ZERRE", "BALCI", "İLGIN", "YAŞÇI", "GÖZEN", "TUTUL", "ŞAHLA", "MAYIN", "MÜREN", "SOĞAN", "YATLI", "PESEN", "MACAR", "KÜSUR", "KÜRCÜ", "İLHAM", "DEYİŞ", "KIVAM", "ÖNLÜK", "ÜNVER", "ZİFİN", "PAZAR", "AVRET", "MİNİK", "EFSUS", "KAPAN", "KESİŞ", "GALİP", "ETMEK", "YANMA", "ÖRTÜL", "ANICI", "ERLEN", "GASBA", "ÇÖZÜP", "FAKÇI", "LEYCİ", "SÖVEN", "ÜNLEM", "OTLAK", "HALİÇ", "ÇINAR", "LİBOŞ", "ÜSTEL", "CEPHE", "MUHAT", "TANIR", "DEFNE", "BAYMA", "DİDİŞ", "TACİR", "ÇARPI", "RUHÇA", "LAÇİN", "FENER", "GÜRSU", "AYIĞI", "MESEN", "ÖZENİ", "İÇSEL", "JARSE", "KOĞUŞ", "HABEŞ", "DAYAT", "TEVİL", "ÖRTÜN", "KURAY", "UMALI", "NECAT", "VOYVO", "İLHAN", "RIZKI", "TONLU", "TENİS", "MAPUS", "ÜMİDE", "POMAT", "PİLLİ", "FASİH", "ESİCİ", "ÇUKUR", "ÖRÜCÜ", "ZATÇI", "BOŞLA", "DARBA", "NASBI", "İCABA", "LÜTUF", "VERİL", "SIRLI", "EFRAT", "TULLÜ", "SONAR", "SOSLA", "VAKFA", "DAĞAR", "DÖNÜP", "HAPŞU", "FİZİK", "BAKIM", "BİNEN", "ALPER", "HAFLI", "AYŞEN", "BORCA", "GÜDÜN", "MULAJ", "SÜTUN", "ÇÖMÜP", "KIRIP", "NUKUT", "OVMUŞ", "FALAŞ", "ÜTMÜŞ", "DİRİĞ", "ZEHRA", "KUŞAT", "KAÇIK", "GİYSİ", "İLDIR", "İŞBAŞ", "HANLI", "NESİR", "YATMA", "İRFAN", "TÖZLE", "DİREY", "SAUNA", "AZALT", "SİNEK", "TURBO", "YAŞÇA", "KULÜP", "GAFÇI", "ŞANAL", "ŞAVKI", "İTİNA", "YELSİ", "YORGA", "TOLGA", "NASLI", "FASLI", "GAZVE", "BÜYÜN", "EZİĞİ", "GÜÇSÜ", "ALKOL", "ÜRKME", "FEYZA", "ÜYELE", "AGORA", "GERİL", "OVMAK", "ŞAŞAN", "ÖZLEM", "DÜVEN", "TÜRLÜ", "ÖLÇEN", "BASIŞ", "ŞIRAK", "SALAR", "KAMSI", "SAZEV", "GEZME", "YAĞIR", "MODEL", "NEYCE", "REYAN", "KÖSEM", "YÜZÜL", "MAKAT", "VUSUL", "YAZSI", "FONDA", "ARENA", "TARAŞ", "ANDIK", "HİNDU", "PEMBE", "KEŞİK", "IRAMA", "SAFİR", "MATÇA", "TUNUS", "TAHİR", "İNCİR", "EĞMİŞ", "KAZIP", "AYDIK", "BOYNU", "İCADI", "POLAT", "SANAY", "ÜZÜNÇ", "UCUNU", "UYGUN", "KAYAN", "SORİT", "TEPSİ", "ÇIKMA", "SUAVİ", "BECER", "ÇIVAN", "FARIT", "İNMEZ", "KUMRU", "NİŞLE", "YALLI", "TAVLI", "SELSİ", "GÖVEL", "HAMDİ", "YANAY", "İNLET", "HASEP", "ÖRDÜK", "RECAİ", "İTLAF", "ESMAN", "KÖLÜK", "EHRAM", "ÇOPUR", "GOLLE", "BRONŞ", "LALAN", "SÜZÜP", "HİTAN", "VURAN", "ZENNE", "KENDİ", "YATSI", "ETLİK", "ZİLCİ", "ERDEM", "YALAN", "KAVMİ", "BERNA", "PALET", "ÜLGER", "ANDIR", "NAZMA", "NAHİF", "SİROZ", "BAREM", "ÜTÜLE", "ÇULCU", "SINMA", "ÜRKÜT", "BULAT", "ŞAKLA", "FİRİK", "DÖNEM", "VAİZE", "OKTAV", "EZBER", "GÖMEÇ", "SİZCE", "TUTMA", "POLAR", "DOYUR", "ŞENİZ", "TENTE", "AYSAR", "KILMA", "ZÜYUF", "ÇATSI", "GAZCI", "HIKLI", "EDİĞE", "EDİCE", "SAZLI", "TİMCİ", "TOZLU", "ZAHİT", "ROSTO", "BUGÜN", "KÜSÜL", "RAFİA", "İTHAM", "BUYUR", "SONAT", "DENEN", "ORBAY", "ÜNSÜZ", "KİRDE", "ÇALIK", "ENGEL", "ROTİL", "TOZUT", "BALSI", "KOZLU", "AMİBİ", "UMRAN", "ARPEJ", "HAYFA", "DİYAR", "FETHİ", "DELİŞ", "MUHİP", "HATİM", "GENCE", "TAKSA", "NAKŞİ", "EPOPE", "KUTSİ", "PLAZA", "PAÇAL", "İDDİA", "TOKÖZ", "KÖKEN", "DİVİK", "ÇÖVEN", "SÜEDA", "ŞIKÇI", "DAMCI", "TRAKE", "DİLCİ", "HORST", "SORMA", "ERMİN", "SISKA", "JULCE", "ÜYELİ", "KÜTLE", "DOMAL", "BATNA", "HÖYÜK", "EŞRAF", "HARUT", "HÜKMÜ", "ALENİ", "UÇAĞA", "KATÇA", "FETÜS", "KIRAT", "TÜREV", "YASLA", "KAYLI", "YAYCI", "İSMİN", "GÜVEN", "KESRE", "HACMİ", "İSLİK", "PİMLİ", "BUYAN", "EKSEN", "REYLİ", "BELİT", "İĞLİK", "AKDUT", "EZDİR", "KAYLA", "BABIN", "TABET", "ÇULHA", "SÜRME", "METİL", "BATKI", "FODLA", "DADAN", "EYVAH", "HÜKÜM", "DERBİ", "BASRİ", "DİBİM", "SAFSI", "ÇÖLLÜ", "ÜRPER", "ÇAĞAN", "SEÇME", "ÖNSOY", "TÜTÜP", "DİKEY", "SOLAN", "FARSI", "DÜĞÜM", "YUMUL", "ŞARLA", "KIŞLI", "ÇALAP", "KONAK", "GENİŞ", "AŞARİ", "ONUCU", "SEYİT", "CEHRİ", "CELEP", "ETMEZ", "EFGAN", "ATFIN", "ÖLÇÜT", "EFKAR", "ISLIK", "KÜSSÜ", "TAPİR", "KEKLE", "KAPIŞ", "YARGI", "DANİŞ", "TEİZM", "BORAN", "SÜRÜŞ", "ONLUK", "ŞUTLU", "ATFET", "BOĞUL", "TİRİL", "BARLA", "GÖMME", "TİRSİ", "YAKIL", "CİNCE", "SEÇİM", "MALTA", "ÖREĞİ", "BEYZİ", "KUNDA", "NATÜR", "HAYTA", "KÖTEK", "UÇURT", "PAFTA", "ÇİZİŞ", "FORTE", "VASIF", "ARABI", "HATME", "ŞEDDE", "FEYZE", "ARAKA", "SEVAL", "ÇATMA", "ORTAÇ", "İŞLEÇ", "BİTİK", "ÇAPUT", "SERİŞ", "ISTAR", "ZITLI", "MERDE", "BORLU", "STİLO", "TOĞAY", "ROBOT", "BAKAÇ", "PİSLİ", "DOĞUM", "DOGMA", "CELBİ", "KELEK", "KUDSİ", "ÜRECİ", "ÖNLEM", "HALLİ", "NAHİV", "YÖNEL", "EBELİ", "NESHE", "ÇORAP", "TAKIR", "ERMİŞ", "DİDİM", "MAZAK", "ÇUMRA", "KALCI", "DAHİL", "FARİS", "HÜZME", "PLAĞA", "SÖZCE", "MANGA", "HULUL", "ARICA", "EYYAM", "GRADO", "KİNİK", "ŞENLE", "ERDİN", "RUMCA", "ÖPTÜK", "ŞİŞME", "YAĞSI", "DÜŞSÜ", "BASIP", "FOKLU", "BUCAK", "NODÜL", "GEÇÇE", "NUTKU", "İHLAL", "KEBİR", "HEZEL", "YATIM", "JÖNSÜ", "SALON", "SARIP", "BİDAR", "SAHTE", "BURUP", "PAKSİ", "SAĞIL", "BOĞAN", "ÇATAK", "KUTLA", "ROZET", "GİRDİ", "ÖNDER", "ANTEP", "AYRIÇ", "KEKLİ", "AKÇAN", "ÖDÜNÇ", "KURAL", "DEŞME", "PELÜR", "OBACI", "AÇSIZ", "ÖLMÜŞ", "REFİK", "PORSU", "MAKAK", "İRADE", "VİZÖR", "TOSUN", "TÜPLÜ", "TRANŞ", "ELLEN", "CILIZ", "AZALI", "VERİŞ", "BAĞDA", "SAKAT", "OLUĞU", "ACZİN", "DALAN", "DEFİN", "MESMU", "KURYE", "LERZE", "KÜLAH", "CÜRÜM", "KÜŞNE", "SARIZ", "KUSUR", "İYODA", "FAYLA", "KANIŞ", "TARİM", "UTKAN", "YASAL", "SAPÇA", "KAVME", "GÖBEK", "FETİŞ", "OTÇUK", "AYŞİN", "ORFOZ", "YEZİT", "AKSIN", "BOŞAT", "HAZAR", "YAŞAR", "DİRİL", "SAYMA", "KENET", "NEDBE", "AYRIŞ", "FERCE", "KALFA", "KÖKLÜ", "EMEĞİ", "ABİLİ", "ARİSİ", "FENCİ", "POŞET", "SEDİR", "ŞANCI", "DİVİT", "SESÇİ", "ŞİŞİN", "İSYAN", "DİGOR", "PELİN", "OBALA", "ÇİLCİ", "SORUM", "POZLA", "GRİCE", "FALEZ", "LAVUK", "FODRA", "YILMA", "ACIMI", "LALIK", "NURAN", "ANMAK", "EVLET", "KOMÜN", "BASIK", "NAZAR", "SOMAK", "ÖZLET", "YOZLA", "GETİR", "İNTAÇ", "TEZEK", "ÇİPLİ", "AĞZIN", "HAVLU", "AFTOS", "İKRAH", "TOKYO", "MOĞOL", "ŞAŞIP", "GULET", "DONUK", "SEYİS", "KÜLEK", "AKAMA", "TEZCİ", "BÜTEN", "ATSAL", "POKER", "GASİL", "YÜZCE", "DENLİ", "DENİZ", "GÜNEÇ", "ABİYE", "ŞERHA", "ATLAN", "GÜRLÜ", "BARDA", "BEZGİ", "LOBUN", "ORALI", "ÜZGÜN", "BATAK", "KAVUN", "ZAFER", "KAVAS", "VECİH", "SUÇLU", "TEKİR", "BATIR", "OYMUŞ", "ODAĞI", "KAYIL", "CEBİM", "DÜNYA", "GEDİŞ", "SAMİN", "KAGİR", "BEĞİM", "SİFON", "ÜÇLEN", "KAYGI", "ZİGOT", "TOSSU", "CEYDA", "MESAJ", "OLULU", "TEHİR", "COŞUP", "VUKUF", "UÇUĞA", "KAŞIK", "KENAR", "SEYRİ", "GÜLÜŞ", "GRİBİ", "TERKİ", "GÜLSU", "KEŞFİ", "PETEK", "ILTAR", "İZABE", "FREZE", "ÇOTUK", "ARGIN", "ERBEN", "FERLİ", "DUMUR", "GAİLE", "KURNA", "GİYİM", "ÖZMEN", "ANYON", "BEKAS", "İHLAS", "AYLAŞ", "YEMLE", "HAKSI", "İMDAT", "SOYSU", "BORDO", "VAADİ", "ZORUN", "KIÇLI", "PUDRA", "YOĞUR", "DOYMA", "TABYA", "ÇATKI", "GONGA", "EPİĞE", "BAYSI", "MORLU", "ZORLA", "YANIŞ", "YAKLI", "GEDİL", "ÇENET", "RAHİM", "KERLİ", "PEYAM", "SALIN", "ADİLE", "YEĞEN", "DOĞRA", "FONSU", "KADAR", "ÇALIP", "EVSEN", "ÇÖPÇÜ", "BAĞCA", "SOLLA", "YAYIN", "TUTSU", "GÖDEN", "ZÜHUL", "KATAN", "ÇÜRÜK", "OTİZM", "FIKIR", "HALKA", "GİDİL", "ÖZDEŞ", "KOZCA", "SAFER", "ISLAT", "BİÇEN", "SABUH", "LİGCİ", "SAPAK", "BOZUŞ", "GÖBEL", "HIŞIL", "DİLME", "KOŞUM", "TOPÇA", "RECME", "SALVO", "NETSİ", "ÇOKAY", "CEBRE", "ABSAL", "YAMAK", "PİZZA", "ŞENSİ", "BÜZGÜ", "SARAY", "SNOBU", "GÖTÜR", "ACZİM", "TUNSU", "KARIK", "CEPÇİ", "HELKE", "RASIT", "SEFER", "YEREN", "MAŞLI", "SERVİ", "HATIR", "AKEMİ", "SAĞIM", "ROMSU", "ÜZERE", "HERTZ", "LÜZUM", "YERİN", "RETÇİ", "DÜŞEY", "AHŞAP", "SIZIL", "YETME", "ÜZEME", "ELLİK", "BEHEY", "BAKAN", "DAMAK", "KOVUL", "ÇELİM", "DİDEN", "SARPA", "BAKMA", "ÇAMAŞ", "HARDA", "TAŞÇI", "DİŞİL", "NAHOŞ", "EŞSİZ", "SOYMA", "GOCUK", "BELGE", "HASIR", "REŞAT", "VAGON", "BEZİŞ", "ANMAZ", "HAYZI", "NAKDE", "MECİD", "YUDUM", "ATASI", "TEKAY", "SELVA", "NADAS", "FİKİR", "RELİK", "KÜTÖR", "PONZA", "SADRI", "GÜLCE", "PİNCE", "BURUL", "ÖRÜLÜ", "BULUK", "NAKIZ", "FAHİM", "ZİFİR", "SİYAK", "MIZIR", "LİNCE", "KOKOT", "ERTEK", "SIÇIP", "ALLAT", "KLİŞE", "BATIN", "KIZLI", "İŞKİL", "GELİP", "TAYLI", "AZCIK", "DİCLE", "MAVAL", "ÇİLLE", "YARCI", "TANİK", "KAHVE", "ÖTTÜK", "KÖSSÜ", "FİLLİ", "KANAT", "NEFES", "AYKUT", "OMLUK", "ROLCÜ", "HASLI", "KOVUŞ", "EŞLEN", "ÜMERA", "SORUP", "EYLEM", "ÇAPIP", "SİNİŞ", "ERVİN", "NİZİP", "GUSLÜ", "YOKLA", "RULET", "TAÇÇI", "BAHAR", "BODUÇ", "ŞİŞKO", "SAĞIŞ", "İHALE", "SAPKI", "SERİP", "ZERCİ", "METSİ", "YARIK", "TURBA", "PEKSİ", "DÜRZİ", "HEPSİ", "CÜLUS", "BADAT", "ÇAKIL", "HÜRLÜ", "SORGU", "FOŞUR", "KASIK", "BARTU", "ANACA", "GURUR", "ARMUT", "ÖBEĞİ", "KOTRA", "SUYUK", "DERGİ", "TELEM", "DİNCE", "İHVAN", "ESVED", "KATIK", "NEHRİ", "KILSI", "MEYSİ", "ANDAK", "ÇEKEK", "MADİK", "AHLAŞ", "TINLA", "SINIK", "TALİM", "DELTA", "NARCA", "CORUM", "ALKIN", "METNİ", "VARDA", "RİNGA", "EKOLA", "VEREN", "YILIK", "SEKSİ", "YENSİ", "ÇOMAK", "TAVLA", "SUPAP", "CİDAL", "AYRAL", "MENCİ", "MERİH", "TUFAN", "BORİK", "UNLUK", "BANCA", "YEKLİ", "SOLLU", "GADRİ", "İTMEK", "MESEL", "YELVE", "SIFAT", "TAKTİ", "MARYA", "ÖLELİ", "ALCIK", "LAKOZ", "KIKIR", "IŞIĞI", "PEKİN", "ONGEN", "SIDAL", "GURLA", "AŞICI", "KURGU", "EĞLEN", "MUTSU", "BASIL", "TECİM", "UCUNA", "YİYİP", "START", "SÖVME", "DANSI", "GÖÇSÜ", "ÇÖKÜK", "SOMON", "HADİD", "DİKİM", "BANKA", "REFÜJ", "REKİN", "AYHAN", "CEDDE", "NAZMİ", "GÜLER", "ÇEVRE", "AHLIK", "AKTAŞ", "ADAĞA", "ESTER", "ABACI", "MÜNŞİ", "BAVUL", "HARUN", "AFİFE", "VİRAL", "REMİZ", "HOHLA", "KISIK", "ŞABAN", "HİLMİ", "DÜŞKÜ", "CELSE", "GÖÇME", "GÜBÜR", "FALİH", "RECİM", "MASAL", "TADAN", "FİGAN", "ERZEL", "ALTSI", "ÖYKÜN", "DİZİŞ", "BARÇA", "SPREY", "FARBA", "TAHIL", "MEDET", "CAYMA", "YAPIM", "FAZLI", "RECİK", "TAKSİ", "EŞARP", "KAVAT", "UYDUR", "EZİNE", "ÇÖKEL", "HAPSE", "ERZAK", "OLUĞA", "TEKÇİ", "OFLAZ", "FERAY", "HOKEY", "DİLLİ", "ROLCE", "ITLAK", "MAHİN", "PATIR", "SORUL", "KÜNDE", "ADACI", "MISIR", "KURUP", "TUTUŞ", "TADIM", "RENDE", "KOKUŞ", "ÇEKEL", "SİNİP", "KAVSİ", "AYSEL", "KAPAR", "SAYFA", "İRMAK", "AKHAN", "GARLI", "PATOZ", "LOGOS", "EMECİ", "KOPAN", "LÜKÇÜ", "NİŞAN", "KAĞNI", "ALICA", "VARAN", "AGULA", "JETSİ", "AZMAK", "AĞRIT", "BUDUN", "FALCI", "SÖNÜŞ", "ALLAH", "METAN", "SEKİZ", "ZİYAN", "KADRİ", "EFESİ", "İŞGAL", "HALAY", "GÖRÜŞ", "HIZIR", "SETRE", "TÜYÜL", "MEZUN", "ÇİZİM", "YATIP", "ORACA", "TURAÇ", "ORTEZ", "HUZUR", "GAVOT", "EKESİ", "DERCİ", "TEMİN", "SAMUR", "GÜRAY", "AĞAMA", "YAŞAT", "KEŞEN", "HASAR", "DÖVÜL", "ACINA", "ŞAMİL", "ÖĞÜDÜ", "BUTİK", "İDRAK", "RUNCA", "RUMBA", "ALSAL", "EYLEN", "ZEYLİ", "AMLAN", "RAFET", "ŞEFÇİ", "ÇAPAK", "KURLU", "İZHAR", "SEMRA", "SAVER", "TABAN", "BÖLÜP", "FOKUR", "ALMUS", "PEYLE", "DİKME", "HISIM", "SEZON", "NÜSHA", "MAVNA", "ORTAN", "SIKIL"]);
+const SCHED   = ["RADYO", "BURUK", "BAHAR", "HARAÇ", "FIKRA", "DİKEN", "KADİM", "HELVA", "ŞEHİT", "SARAY", "İRADE", "HAŞİN", "YEŞİL", "ARMUT", "YATAY", "ÇAPAK", "BARAJ", "VAHİM", "KOÇAK", "DÖVÜŞ", "İKBAL", "DOĞAL", "ÖNCÜL", "HAFTA", "BAREM", "İRONİ", "GENEL", "YAZGI", "SAVCI", "NEHİR", "KİLER", "EMSAL", "MECAZ", "NEFES", "KIVAM", "GÜNEY", "BAKLA", "YEMİN", "LOKMA", "CİMRİ", "KABLO", "TRİKO", "YANIK", "DEFİN", "SENET", "GÜDÜK", "AHENK", "KARGO", "AVARE", "KÜÇÜK", "FETİH", "EKLEM", "ŞÖLEN", "EFSUN", "ALTIN", "GARAZ", "MARUL", "JETON", "DEFNE", "SÜREÇ", "NADİR", "GEYİK", "TABİP", "SAKİN", "PİKAP", "TANIM", "MAPUS", "CİLVE", "DAVUL", "BAKIR", "TAKIM", "KIZAK", "SİNİR", "ULEMA", "ABBAS", "BALIK", "SİTEM", "LEYLA", "MISIR", "YATAK", "AYRAÇ", "NESNE", "ZARİF", "İDARE", "REÇEL", "SÜTUN", "ÜSTAT", "NEZİH", "NAĞME", "VİTES", "İKRAM", "SARMA", "ESKİZ", "ERGİN", "DİVAN", "ÇAĞRI", "CİSİM", "DÜĞÜM", "KANAT", "SANIK", "SABAH", "BORDO", "VAŞAK", "DAMAR", "YAŞAM", "ŞEKER", "AHBAP", "VİŞNE", "LİMİT", "TIMAR", "CEVAP", "KIZIL", "FİLİZ", "YAKUT", "GİTAR", "AHLAK", "GÜRUH", "SALON", "AKSAK", "SOĞAN", "KUMRU", "ŞEREF", "SÜLÜN", "EKOSE", "YOSUN", "TABLA", "MADDİ", "ÇADIR", "DENGE", "NİŞAN", "NABİZ", "BAHÇE", "BANDO", "HEVES", "KAPAN", "GÖREV", "ÖDÜNÇ", "ÇELME", "SERİN", "KİBİR", "HÜCRE", "MAZOT", "MADEN", "PARKE", "ÇEMEN", "ÇEKİÇ", "ÇİMEN", "HESAP", "ÜSLUP", "YEDEK", "YÜZEY", "DEPAR", "GÖĞÜS", "AİDAT", "KİMYA", "BİLGE", "TORBA", "VAKIF", "VUKUF", "ARIZA", "AMBAR", "PİLAV", "AKRAN", "ERKEN", "BEKÇİ", "LEHÇE", "MAKAS", "EVVEL", "İHLAL", "NÜSHA", "DOĞUM", "İBRET", "MAHİR", "MATEM", "HAKİM", "ZARAR", "CEBİR", "KANUN", "BAKAN", "LAGÜN", "BÜTÇE", "HAFIZ", "SEBZE", "KANIT", "İPTAL", "BİLEK", "ENLEM", "HUKUK", "AŞURE", "CEVİZ", "İFFET", "BORSA", "IRGAT", "CEMRE", "EZBER", "SAFRA", "DÜĞÜN", "KİLİM", "GÖNÜL", "SÖĞÜŞ", "ÇAĞLA", "KİRAZ", "ANKET", "MEZAR", "HAVZA", "KÖPRÜ", "KABAK", "KUDUZ", "SAYGI", "GAFİL", "NİYET", "SEBİL", "VERGİ", "LONCA", "BAROK", "BARIŞ", "TİTAN", "FİDAN", "HAVUZ", "TOPUZ", "HALİÇ", "TÜRBE", "BANKA", "MEŞRU", "CADDE", "İFLAH", "LAMBA", "FULAR", "SÜKUT", "DENİZ", "DORUK", "RADAR", "ÖRNEK", "ZAFER", "BOBİN", "TIKAÇ", "SABIR", "RACON", "SABİT", "BATAK", "GELİN", "ALAKA", "MAKUL", "KEBAP", "CİHAZ", "ŞAFAK", "VARİS", "HAYAT", "NAMLU", "YIKIM", "ROKET", "FAKİR", "SORGU", "BALDO", "LİMAN", "FRESK", "NÜANS", "ANLAM", "TASMA", "BİLGİ", "SÖĞÜT", "SOMUN", "GAZEL", "BAGET", "GELİR", "HAMLE", "KAPAK", "MELEZ", "ZİHİN", "AÇLIK", "EMARE", "İFADE", "ALÇAK", "ÇİÇEK", "KABAN", "ÖZLEM", "SALGI", "FIRÇA", "KENAR", "EBEDİ", "ZEMİN", "BOYLU", "KEKİK", "HATİP", "İRFAN", "DÖNER", "HAZİN", "BOYUN", "ANTİK", "TEYZE", "DAYAK", "DAİMA", "KÖPEK", "BELDE", "KASAP", "SALYA", "METİN", "ŞURUP", "TÜMEL", "ARABA", "DELİL", "SINIF", "FİDYE", "PASTA", "SERUM", "ABİDE", "ALKOL", "KİRİŞ", "TESTİ", "RÜTBE", "TAHİN", "ALKIŞ", "VATOZ", "GÖZDE", "EZİNE", "SABUN", "BARİZ", "BÜYÜK", "KAYAK", "DÜŞES", "AYRAN", "YANKI", "ERDEM", "POLEN", "KİRPİ", "ANTRE", "FACİA", "AKŞAM", "ÇATAL", "ROMAN", "ATLAS", "HAYAL", "NÖBET", "GAMZE", "RAKAM", "SERÇE", "İFLAS", "BULGU", "DAİRE", "ÖZGÜN", "YEŞİM", "NİKEL", "BÜTÜN", "MÜDÜR", "ÖZGÜR", "TESİS", "YARIŞ", "SOYUT", "KAYIŞ", "HAMUR", "KEMAN", "ÜZGÜN", "RİTİM", "YÖRÜK", "RANZA", "SEHER", "TAKOZ", "ANONS", "POMPA", "DİZİN", "TANRI", "GÜNCE", "İHBAR", "ÇİLEK", "LİDER"];
+const ARCHIVE = ["DEMİR", "GÖRÜŞ", "MARKA", "SAVAŞ", "FİZİK", "ÇOCUK", "TÜRKÜ", "DİYOT", "YOLCU", "KAZIK", "DİŞLİ", "BURUN", "ŞAPKA", "SINAV", "KAYGI", "SAÇAK", "VÜCUT", "MİDYE", "EYLÜL", "SOKAK", "DENEY", "GURUR", "BASKI", "TÜZÜK", "BİBER", "HİSSE", "KÜREK", "FORUM", "VEKİL", "SONUÇ", "MAKAM", "ORGAN", "NAKİT", "FOSİL", "NEDEN", "GEÇİT", "KUBBE", "UZMAN", "İNANÇ", "PROVA", "KADİM", "SEBEP", "YÜZÜK", "DEVRE", "PRENS", "POŞET", "KUPON", "ASLAN", "DALGA", "TERAS", "SANAT", "YALIN", "KALEM", "HİLAL", "DÜNYA", "ANTEN", "BAYAT", "NESİL", "PEMBE", "EYLEM", "KAFES", "EKRAN", "ÇELİK", "PERDE", "İNSAN", "GÜZEL", "BETON", "KİTAP", "BEYAN", "BELGE", "BANYO", "PİŞTİ", "ÇIRAK", "NOTER", "ZEBRA", "ŞARKI", "YONCA", "DÜĞME", "VERİM", "NAMAZ", "NAKİL", "HASTA", "GAYRİ", "KOYUN", "ENGİN", "ANEMİ", "ABİYE", "NOKTA", "YARIM", "EVCİL", "BRONZ", "TİLKİ", "YİĞİT", "KALIP", "MELEK", "TARİH", "AHŞAP", "AZAMİ", "SİLAH", "DUVAR", "SEVAP", "TULUM", "TANİK", "BÖCEK", "YIĞIN", "AROMA", "SALÇA", "MİRAS", "IRMAK", "KABZA", "REHİN", "DURAK", "TÜMÖR", "BİTKİ", "BİLET", "DÖNEM", "DUYGU", "DUMAN", "KISIR", "KUZEY", "ENGEL", "KAVİS", "LANET", "BOYUT", "CEKET", "GİDER", "GONCA", "GÜNAH", "SOYLU", "HACİZ"];
+const MEANINGS= {"ARABA": "Motorlu kara taşıtı; otomobil.", "ALTIN": "Sarı renkli, parlak ve değerli maden.", "AYRAN": "Yoğurt, su ve tuzla yapılan serinletici içecek.", "ASKER": "Orduya mensup, silahlı kuvvetlerde görev yapan kişi.", "BAHÇE": "Etrafı çevrili, çiçek ya da sebze yetiştirilen alan.", "BAHAR": "Kış ile yazın arasında doğanın canlandığı mevsim; ilkbahar.", "BALIK": "Suda yaşayan, solungaçla nefes alan omurgalı hayvan.", "BANKA": "Para yatırma, çekme ve finansal işlemlerin yapıldığı kurum.", "BANYO": "Vücudu yıkamaya ayrılmış oda; yıkanma eylemi.", "BARAJ": "Su depolamak amacıyla akarsu üzerine inşa edilen set ya da yapı.", "BARIŞ": "Savaş ve çatışmanın olmadığı, huzurlu ve uzlaşmacı durum.", "BASKI": "Yüzeye uygulanan kuvvet; yayının basılı nüshası; baskı altına alma.", "BAYAT": "Tazeliğini yitirmiş; eskimiş ve tekrarlanan.", "BELGE": "Bir bilgi ya da hakkı kanıtlamaya yarayan yazılı veya basılı kâğıt.", "BETON": "Çimento, su, kum ve çakılın karıştırılmasıyla yapılan yapı malzemesi.", "BEYAN": "Resmi açıklama ya da bildiri; yetkililere bildirme.", "BEYİN": "Kafatası içindeki, düşünme ve duyguları yöneten sinir sistemi merkezi.", "BİBER": "Keskin ya da tatlı tadıyla bilinen, yemeklerde yaygın kullanılan sebze.", "BİLET": "Ulaşım veya etkinliğe girişi sağlayan basılı belge.", "BİLGİ": "Öğrenme, araştırma veya deneyimle kazanılan zihinsel birikim.", "BİTKİ": "Fotosentez yapan, kök-gövde-yaprak organları bulunan canlı türü.", "BORSA": "Hisse senedi ve menkul kıymetlerin alınıp satıldığı organize piyasa.", "BOYUN": "Kafayı gövdeye bağlayan vücut bölümü.", "BOYUT": "Uzunluk, genişlik veya yükseklik gibi ölçüm yönü; kapsam ve büyüklük.", "BÖCEK": "Altı bacaklı, çoğunlukla kanatlı, küçük eklem bacaklı canlı.", "BRONZ": "Bakır ve kalay alaşımından oluşan, kahverengi sert metal.", "BURUN": "Yüzdeki koklama ve solunum organı; bir nesnenin öne çıkan ucu.", "BÜTÇE": "Belirli bir dönem için gelir ve giderlerin planlandığı mali belge.", "BÜTÜN": "Tamamı, hepsi; eksiksiz ve tam olan.", "BÜYÜK": "Boyut, miktar ya da önemi fazla olan; küçüğün karşıtı.", "CADDE": "Şehirlerde iki yanı yapılarla çevrili geniş ve düzenli yol.", "CEKET": "Önden düğmeli, kollu üst giysi.", "CEVAP": "Soruya veya bir duruma verilen karşılık; yanıt.", "CEVİZ": "Sert kabuklu, beyin şeklindeki yenilebilir iç meyvesiyle bilinen ağaç ve meyvesi.", "CİSİM": "Fiziksel varlığı olan, kütlesi ve hacmi bulunan maddi nesne.", "ÇELİK": "Demir ve karbonun alaşımından oluşan, sert ve dayanıklı metal.", "ÇIRAK": "Bir ustanın yanında mesleki eğitim gören genç kişi.", "ÇEKİÇ": "Çivi çakmak ya da metal şekillendirmek için kullanılan, ağır başlıklı el aleti.", "ÇİÇEK": "Çiçekli bitkilerin üreme organı; renkli ve güzel görünümlü yapı.", "ÇOCUK": "Ergenlik çağına ulaşmamış küçük insan.", "DAİRE": "Yuvarlak geometrik şekil; apartman katındaki konut bölümü.", "DALGA": "Suyun rüzgâr etkisiyle oluşturduğu inip çıkan hareket.", "DAMAR": "Kan ve diğer sıvıların vücutta aktığı boru şeklindeki yapı.", "DEMİR": "Gri renkli, yaygın kullanılan metal element.", "DENEY": "Bir hipotezi sınamak amacıyla kontrollü koşullarda yapılan bilimsel gözlem.", "DENGE": "Karşıt güçlerin birbirini dengelemesi; istikrarlı durum.", "DENİZ": "Kıtaları çevreleyen büyük tuzlu su kütlesi.", "DEVRE": "Elektrik akımının aktığı kapalı yol; bir sürecin tamamlanan çevrimi.", "DİKEN": "Bitkilerin gövde ya da yapraklarındaki sivri ve sert çıkıntı.", "DİŞLİ": "Dişlerle donanmış, diğer çarklarla kenetlenerek hareket ileten makine parçası.", "DOĞAL": "Doğaya ait, insan yapımı olmayan; kendiliğinden oluşan.", "DOĞUM": "Canlının ana karnından dünyaya gelmesi.", "DÖNEM": "Belirli özellikleriyle tanımlanan, sınırlı zaman dilimi.", "DURAK": "Toplu taşıma araçlarının yolcu aldığı belirlenmiş nokta; mola yeri.", "DUMAN": "Yanma sonucu oluşan, havaya karışan gaz ve partiküller.", "DUVAR": "Mekânları birbirinden ayıran ya da dışarıdan koruyan dikey yapı öğesi.", "DUYGU": "Bir olay ya da kişiye karşı hissedilen içsel tepki; his.", "DÖVİZ": "Yabancı ülkelerin para birimleri; uluslararası ödeme aracı.", "DÜNYA": "Güneş sisteminin üçüncü gezegeni; yaşadığımız yerküre.", "DÜĞME": "Giysileri iliklemek için kullanılan küçük yuvarlak nesne; cihazlardaki tuş.", "DÜĞÜN": "Evlilik törenini ve kutlamalarını kapsayan şenlik.", "EKLEM": "İki kemiğin birleştiği ve hareketi sağlayan nokta; mafsal.", "EKRAN": "Görüntünün yansıtıldığı yüzey; televizyon, bilgisayar veya telefon ekranı.", "ENGEL": "Bir şeyin önüne geçen ya da ilerlemeyi durduran şey; mani.", "ERDEM": "Ahlaki açıdan değerli ve övgüye layık karakter özelliği; fazilet.", "ERGİN": "Olgunlaşmış, yetişkin; yasal açıdan reşit olan.", "ERKEN": "Belirlenen zamandan önce olan; vakitsiz.", "EVCİL": "İnsanlar tarafından ehlileştirilmiş, ev ortamına alıştırılmış hayvan.", "EYLÜL": "Güz mevsiminin başlangıcı, yılın dokuzuncu ayı.", "EYLEM": "Bilinçli yapılan iş veya hareket; fiil.", "EZBER": "Bir metni ya da bilgiyi hafızaya alma; ezberlenmiş bilgi.", "FELEK": "Kader, talih; klasik edebiyatta gökyüzünü ve kaderi simgeleyen kavram.", "FİDAN": "Henüz büyümemiş, genç ve ince ağaç fidesi.", "FİLİZ": "Bitkinin tohumdan ya da gövdeden çıkan genç sürgünü.", "FİZİK": "Madde, enerji ve bunların arasındaki ilişkileri inceleyen temel doğa bilimi.", "FORUM": "Tartışma ve fikir alışverişi platformu.", "GELİN": "Düğünde evlenen kadın; oğlun eşi.", "GELİR": "Emek, sermaye ya da mülkten elde edilen kazanç.", "GENEL": "Tümüne ya da büyük çoğunluğa ait; özel olmayan, yaygın.", "GEYİK": "Ormanlarda yaşayan, erkeklerinin dallanmış boynuzlarıyla tanınan memeli hayvan.", "GEÇİT": "Dağlarda ya da sınırlarda geçiş sağlayan dar yol; geçiş noktası.", "GİDER": "Bir faaliyet için yapılan para harcaması; masraf.", "GİTAR": "Telli çalgı ailesinin en yaygın üyesi; gövde ve saptan oluşan müzik aleti.", "GONCA": "Henüz açmamış çiçek tomurcuğu.", "GÖNÜL": "Duygu ve sevginin merkezi sayılan iç dünya; kalp.", "GÖREV": "Yapılması gereken iş ya da sorumluluk.", "GÖRÜŞ": "Bir konuda oluşturulan fikir ya da kanı; bakış açısı.", "GÖZDE": "En çok sevilen, tercih edilen; favori olan.", "GÖLGE": "Işığın bir cisim tarafından kesilmesiyle oluşan karanlık alan.", "GÖĞÜS": "Boyun ile karın arasındaki vücut bölgesi; ön göğüs duvarı.", "GÜZEL": "Estetiği olan, hoş görünen; beğeni uyandıran.", "GÜNAH": "Dini ya da ahlaki kurallara aykırı eylem.", "GURUR": "Başarı veya onurdan kaynaklanan kişisel memnuniyet duygusu.", "HACİZ": "Borcun tahsili için mahkeme kararıyla borçlunun mallarına el konulması.", "HAFİF": "Ağırlığı az olan; önemsiz kaçan.", "HAFTA": "Yedi günden oluşan zaman dilimi.", "HAMAM": "Geleneksel Türk yıkanma ve temizlenme mekânı.", "HASTA": "Hastalığa yakalanmış, sağlığı bozulmuş kişi.", "HAYAL": "Gerçek olmayan, zihinde kurulan canlandırma; rüya ve düş.", "HAYAT": "Doğumdan ölüme kadar süren varoluş; yaşam.", "HESAP": "Sayısal işlem; borç, alacak ya da miktarın hesaplanması.", "HİLAL": "İnce yay biçimindeki ay görünümü; Türk bayrağındaki ay simgesi.", "HİSSE": "Bir bütündeki pay; borsada işlem gören şirket payı.", "HELVA": "Un, irmik ya da tahin ile yağ ve şekerin pişirilmesiyle yapılan tatlı.", "HEVES": "Bir şeye karşı duyulan istek, şevk ve coşku.", "HUKUK": "Toplumsal ilişkileri düzenleyen, devlet yaptırımıyla desteklenen kurallar bütünü.", "HÜCRE": "Tüm canlıların temel yapı ve işlev birimi.", "İFADE": "Duygu ya da düşünceyi dile getirme biçimi; mahkemede verilen ifade.", "İFLAS": "Borçlarını ödeyemez hale gelen kişi ya da kurumun bu durumunun tespiti.", "İHBAR": "Yetkili makama bilgi ya da şikâyet iletme.", "İHLAL": "Kural, hak ya da anlaşmayı çiğneme.", "İNANÇ": "Bir şeyin doğru olduğuna duyulan kesin kanı; dini veya felsefi inanış.", "İNSAN": "Düşünen, konuşan ve toplumsal yaşayan canlı türü.", "İPTAL": "Geçersiz kılma, yürürlükten kaldırma.", "IRMAK": "Dağlardan ya da yayladan doğup deniz ya da göle dökülen büyük akarsu.", "KABLO": "Elektrik veya veri iletmek için kullanılan yalıtılmış iletken tel demeti.", "KAFES": "Hayvanları içinde tutmak amacıyla tel ya da çubuktan yapılan kapalı yapı.", "KALEM": "Yazı yazmak için kullanılan araç.", "KALIP": "Bir şeye belirli bir biçim vermek için kullanılan şablon; klişe ifade.", "KANCA": "Bir şeyi asmak veya tutmak için kullanılan çengel biçiminde metal nesne.", "KANAT": "Kuşların uçmasını sağlayan organ; uçakların kaldırma kuvveti üreten yüzeyi.", "KANUN": "Devlet tarafından çıkarılan ve herkesin uymak zorunda olduğu hukuki kural.", "KAPAK": "Bir kap ya da açıklığı örten, kapatan parça; kitabın dış yüzü.", "KARGO": "Kurye ya da taşıma şirketi aracılığıyla gönderilen paket veya yük.", "KASAP": "Et kesen ve satan esnaf; kırmızı et satan dükkân.", "KATIR": "Eşek ile atın çiftleşmesinden doğan, yük taşımada kullanılan kısır hayvan.", "KAYIŞ": "Deri ya da plastikten yapılan, bağlama ve tutmaya yarayan şerit.", "KAZIK": "Zemine çakılan sivri uçlu tahta ya da demir; halk dilinde aldatmaca.", "KEBAP": "Şişe geçirilip ateşte ya da ızgarada pişirilen et yemeği.", "KEKİK": "Güçlü kokusuyla bilinen, yemeklerde yaygın kullanılan aromatik bitki.", "KEMAN": "Yay çekilerek çalınan, dört telli yaylı çalgının en yaygın türü.", "KENAR": "Bir yüzey ya da nesnenin en dış çizgisi; kıyı, sınır.", "KİLER": "Yiyecek ve içeceklerin saklandığı küçük oda ya da dolap.", "KİMYA": "Maddenin yapısı, özellikleri ve dönüşümlerini inceleyen doğa bilimi.", "KİRAZ": "İnce saplı, parlak kırmızı renkli, tatlı-ekşi lezzetli meyve.", "KİRPİ": "Sırtı dikenli tüylerle kaplı, tehlike anında top gibi toplanan küçük memeli hayvan.", "KİTAP": "Ciltlenmiş ya da bağlanmış basılı sayfalardan oluşan yayın.", "KONAK": "Büyük ve görkemli konut; yolculukta geceleme yeri.", "KÖPEK": "İnsanın en eski evcil hayvanı; etçil memeli.", "KÖPRÜ": "İki yakayı ya da iki noktayı birbirine bağlayan yapı.", "KUBBE": "Yarım küre biçiminde yapı örtüsü; cami ve tarihi yapılarda kullanılır.", "KUPON": "İndirim hakkı tanıyan ya da belirli bir değer taşıyan basılı belge.", "KOYUN": "Yünü ve eti için yetiştirilen, sürü halinde yaşayan evcil memeli hayvan.", "KUZEY": "Pusulanın dört ana yönünden biri; güneyın karşısındaki yön.", "KÜÇÜK": "Boyut, miktar ya da önemi az olan; büyüğün karşıtı.", "KÜREK": "Küremek için kullanılan uzun saplı araç; omuz kemiği.", "LAMBA": "Elektrik enerjisini ışığa çeviren aydınlatma aracı.", "LANET": "Birinin başına kötülük gelmesi için edilen beddua.", "LEYLA": "Arapçada gece anlamına gelen; edebi gelenekte sevgiliyi simgeleyen isim.", "LİDER": "Bir grubu, partiyi ya da hareketi yöneten, öncülük eden kişi.", "LİMAN": "Gemilerin yanaşıp barındığı, rüzgâr ve dalgadan korunaklı su alanı.", "MADDİ": "Parasal, mali; maddeyle ilgili olan; somut.", "MADEN": "Yerden çıkarılan doğal mineral ya da metal.", "MAKAS": "İki kesici bıçağın menteşeyle birleştirilmesinden oluşan kesme aleti.", "MANDA": "Güçlü yapısıyla bilinen, sulak alanlarda yaşayan büyük evcil hayvan.", "MARKA": "Bir ürün ya da şirketi tanıtan isim, logo veya sembol.", "MARUL": "Yaprakları salatalarda yaygın kullanılan, açık yeşil renkli sebze.", "MATEM": "Bir kişinin ölümü karşısında duyulan derin acı ve yas.", "MELEK": "Dinlerde Allah'ın emriyle görev yapan nurani varlık; temiz kalpli kişi.", "METİN": "Yazılı ya da sözlü anlatımın tüm içeriği; sağlam ve dayanıklı.", "MEYVE": "Çiçekli bitkilerde tohumları barındıran, genellikle yenebilen olgun yapı.", "MEZAR": "Ölünün gömüldüğü yer; kabir.", "MİDYE": "İki kabuklu, denizde yaşayan ve yenilebilen yumuşakça türü.", "MİRAS": "Ölen kişiden kalıtım yoluyla geçen mal, hak ve yükümlülükler.", "NAMAZ": "İslam'ın beş şartından biri; günde beş vakit kılınan bedensel ibadet.", "NEDEN": "Bir sonucu doğuran etken; 'niçin' sorusunun yanıtı.", "NEFES": "Akciğerlere hava çekme ve verme eylemi; soluk.", "NESİL": "Yaklaşık aynı dönemde doğmuş insan kuşağı; jenerasyon.", "NİYET": "Bir şeyi yapmak için alınan karar; amaç ya da maksat.", "NOKTA": "Boyutsuz geometrik öğe; cümle sonundaki noktalama işareti.", "NOTER": "Hukuki belgeleri onaylama ve tasdik etme yetkisine sahip devlet görevlisi.", "ORGAN": "Canlı vücudunda belirli bir görevi olan yapısal birim.", "ÖZLEM": "Uzakta olan birine ya da geçmişe duyulan derin istek ve hasret.", "PASTA": "Unlu mamul, şeker ve çeşitli malzemelerin bir araya getirilmesiyle yapılan tatlı.", "PAZAR": "Alışveriş için açık alanda kurulan tezgâhlar; haftanın son günü.", "PEMBE": "Kırmızı ve beyazın karışımından oluşan açık, pastel renk.", "PERDE": "Pencere veya sahneyi örten asılı kumaş.", "POMPA": "Sıvı veya gazı bir yerden başka yere ileten mekanik cihaz.", "POŞET": "İçine eşya koymak için kullanılan ince plastik ya da kâğıt torba.", "PRENS": "Kral ya da imparatorun erkek çocuğu; şehzade.", "PROVA": "Gösteri ya da performans öncesi yapılan deneme çalışması.", "RADAR": "Radyo dalgaları göndererek uzaktaki nesnelerin konumunu belirleyen elektronik sistem.", "RADYO": "Elektromanyetik dalgalar aracılığıyla ses yayını yapan ya da alan cihaz.", "RAKAM": "Sayıları göstermek için kullanılan sembol; sayısal değer.", "RANZA": "İki katlı yatak sistemi; üst üste yerleştirilmiş çift katlı yatak.", "REÇEL": "Meyve ya da sebzenin şekerle pişirilmesiyle yapılan, ekmeğe sürülen tatlı.", "REHİN": "Güvence olarak tutulan kişi veya nesne.", "RİTİM": "Müzikte veya şiirde düzenli aralıklarla tekrarlanan ses ya da hareket deseni.", "ROKET": "Yakıt yakarak oluşan itiş kuvvetiyle hareket eden araç.", "ROMAN": "Uzun anlatı türünde edebi yapıt; kurgusal ya da gerçek olaylara dayanan uzun hikâye.", "SABAH": "Güneşin doğmasından öğlene kadar olan günün ilk dilimi.", "SABİT": "Değişmeyen, yerinden kımıldamayan; kararlı ve istikrarlı.", "SABIR": "Güçlük ve bekleme durumlarında tahammül gösterme erdemi.", "SABUN": "Yağ ve alkalinin birleşiminden üretilen, temizlik amacıyla kullanılan madde.", "SAKİN": "Sessiz, durgun; telaşsız ve sakin davranan.", "SALÇA": "Domatesin ya da biberin pişirilerek yoğunlaştırılmasıyla yapılan kırmızı sos.", "SALON": "Evin büyük oturma odası; toplantı ya da gösteriler için kullanılan geniş mekân.", "SANAT": "Estetik değer taşıyan yaratıcı üretim; resim, müzik, edebiyat gibi alanlar.", "SARAY": "Hükümdar ya da üst düzey yöneticilerin oturduğu büyük ve görkemli yapı.", "SARMA": "Üzüm yaprağı ya da lahana içine iç harçla sarılarak yapılan yemek.", "SAVAŞ": "Silahlı kuvvetler arasındaki büyük çaplı çatışma.", "SAYGI": "Bir kişi ya da değere gösterilen özen ve hürmet.", "SEBEP": "Bir sonucu doğuran etken; neden.", "SEBZE": "Yenilebilen bitki ya da bitkinin yenilebilir bölümü.", "SENET": "Borç ya da hakkı belgeleyen resmi kâğıt.", "SERİN": "Soğuk ile ılık arasında, ferahlatıcı sıcaklıkta olan.", "SEVAP": "İslam inancında iyilik karşılığında kazanılan manevi ödül.", "SİLAH": "Saldırı ya da savunmada kullanılan araç.", "SİNİR": "Vücutta uyarıları ileten sinir hücreleri demeti; öfke ve gerginlik durumu.", "SINAV": "Bilgi ya da beceriyi ölçmek amacıyla yapılan değerlendirme.", "SINIF": "Okullarda ders görülen oda; öğrencilerin düzeyine göre oluşturulan grup.", "SOĞAN": "Keskin kokusu ve yemeklerde yaygın kullanımıyla bilinen soğanlı sebze.", "SOKAK": "İki yapı sırası arasındaki, caddeden daha dar yol.", "SOMUN": "Civatayla birlikte kullanılan dişli bağlantı elemanı; büyük yuvarlak ekmek.", "SONUÇ": "Bir süreç ya da eylemin ulaştığı son durum; netice.", "SORGU": "Resmi olarak soru sorma; sorgulama.", "SOYLU": "Asil soydan gelen; onurlu ve değerli.", "SAVCI": "Ceza davalarında kamu adına suç iddiasını yürüten hukuk görevlisi.", "ŞARKI": "Söz ve ezgiyle oluşturulan müzik eseri.", "ŞAFAK": "Güneş doğmadan önce ufkun kızarması; tan yeri ağarması.", "ŞAPKA": "Başı örten, genellikle kenarlıklı başlık.", "ŞEKER": "Tatlandırıcı olarak kullanılan, şeker kamışı ya da pancardan elde edilen madde.", "ŞEREF": "Onur, itibar ve saygınlık.", "TAKİM": "Ortak amaç için birlikte çalışan grup; birbiriyle uyumlu parçalar bütünü.", "TAHİN": "Susam tohumlarının ezilmesiyle elde edilen yağlı ve koyu kıvamlı sos.", "TAKOZ": "Tekerleklerin kaymasını önlemek için altına konan kama; destek parçası.", "TANİK": "Bir olaya bizzat tanıklık eden kişi; mahkemede ifade veren şahit.", "TANIM": "Bir kavramın ya da nesnenin özünü açıklayan ifade.", "TANRI": "Dinlerde yaratıcı ve her şeye kadir yüce varlık.", "TARİH": "Geçmişteki olayları inceleyen bilim; takvim tarihi.", "TERAS": "Binanın dışında, taşlıklı düz alan; çatı katı açık alanı.", "TESTİ": "Topraktan yapılan, ağzı dar ve kulplu sürahi biçiminde su kabı.", "TEYZE": "Annenin kız kardeşi.", "TİLKİ": "Uzun kuyruğu ve kurnazlığıyla bilinen küçük etçil memeli hayvan.", "TOPUZ": "Saçın arkada toplanmış yumru biçimi; eski dönemde kullanılan künt savaş aleti.", "TORBA": "Bir şeyleri içine koymak için kullanılan, bez ya da plastikten kap.", "TULUM": "Tek parça tulum biçiminde giysi; tulum peyniri ya da tulum sazı.", "TÜRKÜ": "Halk müziği geleneğinde sözlü ve ezgili eser; anonim halk şiiri.", "TÜMÖR": "Vücutta kontrolsüz hücre çoğalmasıyla oluşan doku kitlesi.", "UZMAN": "Belirli bir alanda derin bilgi ve deneyim sahibi kişi.", "ÜSTAT": "Sanatında ya da mesleğinde büyük ustalığa erişmiş kişi.", "VEKİL": "Başkası adına hareket etme yetkisi verilen kişi; temsilci.", "VERGİ": "Devletin kamu hizmetleri için vatandaşlardan topladığı zorunlu mali yükümlülük.", "VİŞNE": "Kirazın ekşi çeşidi; koyu kırmızı renkli, küçük ve ekşi meyve.", "VİTES": "Motorlu araçlarda hız ve tork aktarımını sağlayan dişli düzeneği.", "VÜCUT": "İnsan ya da hayvanın maddi bütünü; beden.", "YANIK": "Ateş ya da sıcak temas sonucu oluşan deri hasarı; yanmış olan.", "YARIM": "Bütünün iki eşit parçasından biri; eksik ya da tamamlanmamış.", "YARIŞ": "Hız ya da beceri bakımından üstünlük kurmak için yapılan müsabaka.", "YATAK": "Yatıp uyumak için kullanılan döşek ve mobilya.", "YATAY": "Yere paralel, yatık konumda olan; dikey'in karşıtı.", "YEDEK": "İhtiyaç anında kullanılmak üzere ayrılmış parça ya da kişi.", "YEMİN": "Bir şeyin doğruluğunu ya da bir sözün tutulacağını güçlü biçimde belirtme.", "YEŞİL": "Mavi ve sarı arasındaki dalga boyuna karşılık gelen renk; doğayı simgeler.", "YEŞİM": "Yeşil renkli, değerli yarı kıymetli taş; jade.", "YİĞİT": "Yürekli ve cesur olan; kahramanlık gösteren kişi.", "YIĞIN": "Bir araya yığılmış çok sayıda şey; küme.", "YOLCU": "Bir araçla seyahat eden kişi; yolda olan kimse.", "YONCA": "Üç yapraklı, hayvan yemi olarak kullanılan baklagil bitki.", "YOSUN": "Nemli ya da sulak ortamlarda yetişen, yeşil renkli ilkel bitki türü.", "YÜZÜK": "Parmağa takılan, genellikle değerli taşlı süs ya da sembol halkası.", "ZAFER": "Savaş, yarışma ya da mücadelede elde edilen kesin galibiyet.", "ZARAR": "Bir kişi ya da şeye verilen maddi ya da manevi ziyan; kayıp.", "ZARİF": "Davranış ve görünümü şık, ince ve kibar olan.", "ZEBRA": "Afrika'ya özgü, siyah-beyaz çizgili atgillerden memeli hayvan.", "ZEMİN": "Yapının üzerine oturduğu toprak yüzeyi; taban, döşeme.", "ZİHİN": "Düşünme, algılama ve akıl yürütme yetisi; beyin işlevi.", "AKŞAM": "Güneşin battığı, öğleden sonra ile gecenin başlangıcı arasındaki zaman dilimi.", "ALKOL": "Mayalanma ya da damıtmayla elde edilen, sarhoş edici kimyasal bileşik; içki.", "ANLAM": "Bir sözcük, ifade ya da durumun taşıdığı içerik; mana.", "ARIZA": "Bir makine ya da sistemin çalışmasını bozan bozukluk; aksama.", "AROMA": "Yiyecek, içecek veya bitkiye özgü belirgin ve hoş koku.", "ASLAN": "Afrika ve Güney Asya'da yaşayan, yelesiyle tanınan büyük kedi türü.", "DAVUL": "Tokmakla çalınan, büyük ve derin sesli vurmalı çalgı aleti.", "DEFNE": "Yaprakları baharat olarak kullanılan, Akdeniz'e özgü her dem yeşil ağaç.", "DÖVME": "Deriye iğne ve boya ile kalıcı olarak yapılan resim ya da yazı.", "DÖVÜŞ": "İki ya da daha fazla tarafın güç kullanarak birbirine karşı mücadelesi; kavga.", "DÖNER": "Şişe geçirilmiş et katmanlarının döndürülerek pişirilmesiyle yapılan Türk yemeği.", "GÜNEY": "Pusulanın dört ana yönünden biri; kuzeyin karşısındaki yön.", "ÖZGÜR": "Herhangi bir baskı ya da kısıtlama altında bulunmayan; hür.", "PİLAV": "Pirinç ya da bulguru yağ ve suyla pişirerek yapılan Türk mutfağının temel yemeği.", "ABİYE": "Gece daveti ya da özel törene giyilen şık ve resmi kıyafet.", "AÇLIK": "Yemek yeme ihtiyacından kaynaklanan rahatsızlık; gıda yetersizliği sorunu.", "AHBAP": "Samimi dost; arkadaş.", "AHŞAP": "Ağaçtan elde edilen işlenmiş odun malzeme; tahta.", "AHLAK": "Toplumda kabul gören doğru ve yanlış davranış kuralları bütünü; etik.", "AİDAT": "Bir dernek, apartman ya da kulübe ödenen düzenli üyelik ya da katılım payı.", "AKRAN": "Aynı yaş ya da seviyede olan kişi; yaşıt.", "AKSAK": "Top çekerek, düzensiz yürüyen; işleyişi bozuk.", "ALAKA": "İlgi, bağlantı; bir şeye ya da kişiye duyulan yakınlık.", "ALÇAK": "Yüksekliği az olan; ahlaken düşük, onursuz kişi.", "ALKIŞ": "Beğeni veya onay belirtmek için elleri birbirine vurma; alenen övme.", "AMBAR": "Tahıl, yiyecek ya da eşya depolamak için kullanılan büyük depo.", "ANEMİ": "Kanda alyuvar ya da hemoglobin miktarının normalin altına düşmesi; kansızlık.", "ANKET": "Belirli bir konuda bilgi toplamak amacıyla hazırlanan soru formu.", "ANONS": "Kamuoyuna yapılan duyuru ya da ilan; hoparlörden yapılan bilgilendirme.", "ANTEN": "Radyo, televizyon ya da iletişim cihazlarında sinyal alıp veren sistem.", "ANTİK": "Çok eski dönemlere ait, tarihi değeri olan; eskiçağdan kalma.", "ANTRE": "Bir evin ya da binanın girişindeki küçük bölüm; ön oda.", "ARMUT": "Saplı ve armut biçiminde, genellikle sarı ya da yeşil renkli, tatlı meyve.", "AŞURE": "Muharrem ayında tahıl, kuru meyve ve baklagillerin pişirilmesiyle yapılan tatlı.", "ATLAS": "Coğrafi haritaların bir arada bulunduğu kitap; parlak ipekli kumaş türü.", "AVARE": "Başıboş, amaçsızca gezen kişi; aylak.", "AYRAÇ": "Kitap ya da defterde sayfa yerini belirtmek için kullanılan ince nesne; parantez işareti.", "AZAMİ": "En yüksek derece ya da miktar; maksimum.", "BAKIR": "Kırmızımsı renkli, elektrik ve ısı iletkenliği yüksek metal element.", "BAKLA": "Geniş, yassı tohumlu baklagil sebze; pilaki ve mezede yaygın kullanılır.", "BAKAN": "Hükümetin bir bakanlığını yönetmekle görevli üyesi.", "BALDO": "Taneleri kısa ve yuvarlak, pilav ve süt lapasında tercih edilen pirinç çeşidi.", "BANDO": "Üflemeli ve vurmalı çalgılardan oluşan, törenlerde yürüyerek çalan müzik topluluğu.", "BAREM": "Belirli bir sisteme göre düzenlenmiş ücret ya da puan cetveli; tarife.", "BARİZ": "Açıkça belli, göze çarpan; belirgin.", "BATAK": "Bataklık, çamurlu ve geçilmesi güç alan; çıkmaza giren durum.", "BEKÇİ": "Bir yeri korumakla görevli kişi; gece bekçisi.", "BELDE": "Kasaba büyüklüğünde, köyden büyük ve belediyeli yerleşim birimi.", "BİLEK": "El ile kolun birleştiği eklem bölgesi.", "BİLGE": "Derin bilgi ve yaşam deneyimiyle olgunlaşmış, akıllı ve erdemli kişi.", "BOBİN": "Elektrik endükleyen ya da depolayan, tel sarılı silindirik eleman.", "BORDO": "Koyu kırmızı ile mor arasında kalan renk.", "BOYLU": "Uzun boylu, iri yapılı; boylu poslu.", "BUKLE": "Kıvrık saç lülesi; halka ya da kıvrım biçimindeki yapı.", "BULGU": "Araştırma ya da inceleme sonucunda elde edilen bilgi ya da sonuç.", "BURUK": "Ağızda ekşi-acı bırakan tat; içinde hafif buruk duygu taşıyan.", "CAHİL": "Eğitim görmemiş, bilgisiz kişi; bir konudan habersiz olan.", "CEBİR": "Harfler ve sembollerle sayısal ilişkileri inceleyen matematik dalı.", "CİHAZ": "Belirli bir işlevi olan teknik alet ya da makine.", "ÇADIR": "Kumaş ya da deriden yapılmış, taşınabilir barınak.", "ÇAPAK": "Uyku sırasında gözün köşesinde biriken kurumuş göz salgısı; metal işlemede kalan pürüz.", "ÇATAL": "Yiyecekleri tutmak ya da ağza taşımak için kullanılan, çatallı yemek aleti.", "ÇİLEK": "Kırmızı renkli, küçük ve tatlı-ekşi lezzetli meyve.", "ÇİMEN": "Kısa ve sık yetişen ot örtüsü; çimenlik alan.", "DAYAK": "Fiziksel dövme, şiddet uygulaması; destek amacıyla konulan kiriş.", "DEFİN": "Ölünün toprağa ya da mezara gömülmesi; defin töreni.", "DELİL": "Bir iddiayı doğrulayan ya da çürüten somut dayanak; kanıt.", "DİVAN": "Divan edebiyatına ait şiir kitabı; devlet yönetiminin toplandığı yüksek kurul.", "DİYOT": "Elektrik akımını yalnızca bir yönde geçiren elektronik devre elemanı.", "DİZİN": "Kitap ya da veritabanında alfabetik sırayla düzenlenmiş konu listesi; indeks.", "DORUK": "Bir dağın ya da tepenin en yüksek noktası; bir şeyin en üst düzeyi.", "DÜĞÜM": "İp ya da sicimin birbirine bağlanmasıyla oluşan düğüm noktası; güç sorun.", "EBEDİ": "Sonsuza dek süren, ölümsüz; sonsuz ve kalıcı olan.", "EMSAL": "Benzer nitelikte başka örnek ya da durum; eşdeğer kıyas.", "ENGİN": "Uçsuz bucaksız, sonsuz geniş; derin ve sınırsız.", "ESKİZ": "Bir tasarım ya da resmin kabataslak ilk çizimi; taslak.", "EVVEL": "Önce, daha önce; geçmişte olan.", "EZİNE": "Çanakkale'nin Ezine ilçesine özgü, yumuşak beyaz peynir çeşidi.", "FAKİR": "Maddi olanakları son derece sınırlı, yoksul kişi.", "FETİH": "Bir yeri savaş ya da diplomatik yollarla ele geçirme.", "FİDYE": "Rehine ya da tutsaklar serbest bırakmak karşılığında istenen ya da ödenen para.", "FOSİL": "Milyonlarca yıl önce yaşamış canlıların kayaçlara gömülmüş ve taşlaşmış kalıntısı.", "FRESK": "Henüz yaş olan sıva üzerine su bazlı boyayla yapılan duvar resmi tekniği.", "FULAR": "İnce ipekli ya da sentetik kumaştan yapılan boyun ya da baş örtüsü.", "GAFİL": "Dikkatsiz, habersiz; olup bitenden bihaber olan.", "GARAZ": "Bir kişiye karşı beslenen gizli kin ve düşmanlık; art niyet.", "GAZEL": "Divan edebiyatında, genellikle aşk temalı, belirli kafiye düzeniyle yazılmış şiir türü.", "GAYRİ": "Başka, dışında; olumsuzluk bildiren ön ek olarak kullanılır.", "GÜDÜK": "Gelişimini tamamlamamış, bodur; kısa ve eksik kalmış.", "GÜNCE": "Her günün olaylarını kaydeden günlük defter.", "HAKİM": "Mahkemede hüküm veren yargıç; bir konuya egemen olan.", "HAFIZ": "Kuran'ı ezbere bilen kişiye verilen unvan.", "HALİÇ": "Nehir ağzının denizle kesiştiği, tuzlu ve tatlı suların karıştığı koy.", "HAMLE": "Birdenbire yapılan saldırı ya da atılım; satranç gibi oyunlarda yapılan adım.", "HAMUR": "Un, su ve gerekli malzemelerin yoğrulmasıyla hazırlanan yarı katı karışım.", "HARAÇ": "Osmanlı döneminde gayrimüslimlerden alınan baş vergisi; günümüzde zorla alınan para.", "HATİP": "Konuşma sanatında yetkin, etkili konuşan kişi.", "HAVUZ": "İçine su doldurulmuş, yüzme ya da süs amacıyla kullanılan yapay havza.", "HAVZA": "Sularını aynı nehir ya da denize veren, çevresi dağlarla çevrili coğrafi alan.", "HAZİN": "Hüzün veren, acıklı; keder uyandıran.", "IRGAT": "Tarımda ağır bedensel iş yapan gündelikçi işçi; tarım işçisi.", "İBRET": "Başkasının yaşadığı olaydan alınan uyarıcı ders.", "İDARE": "Yönetim; yetersiz kaynakla idare etme; geçiştirme.", "İFFET": "Namus, ahlaki ve cinsel açıdan arılık.", "İFLAH": "Kurtulma, iyileşme; genellikle 'iflah olmamak' olumsuz deyimi ile kullanılır.", "İKBAL": "Talih, baht; yüksek makam ve mutluluk hali.", "İKRAM": "Misafire ya da birine yiyecek-içecek sunma; lütuf ve ihsan.", "İRADE": "Bir şeyi yapma ya da yapmama gücü ve kararlılığı.", "JETON": "Belirli hizmetlerde para yerine kullanılan küçük metal ya da plastik nesne.", "KABAK": "Kabuklu, etli ve genellikle yeşil ya da sarı renkli sebze.", "KABAN": "Kalın ve bol kesimli, soğuğa karşı giyilen uzun dış giysi.", "KABZA": "Kılıç, bıçak ya da tabanca gibi silahlarda elle tutulan sap kısmı.", "KADİF": "Yumuşak ve kadife dokusuna sahip, tüylü yüzeyli kumaş türü.", "KADİM": "Çok eski, başlangıcı olmayan, ezeli veya öteden beri var olan.", "KANIT": "Bir iddiayı doğrulayan ya da çürüten somut dayanak; delil.", "KAPAN": "Hayvanları yakalamaya yarayan tuzak; bir nesneyi sıkıştırarak tutan mekanizma.", "KAVİS": "Yay biçiminde eğri çizgi ya da yüzey; eğim.", "KAYAK": "Kar üzerinde kaymak için kullanılan uzun tahta; bu tahtayla yapılan spor.", "KAYGI": "Endişe ve sıkıntı; bir şeyin yolunda gitmeyeceğine dair üzüntü.", "KİBİR": "Kendini başkalarından üstün görme, büyüklenme.", "KİLİM": "Renkli yün ya da pamuk ipliklerle elle dokunan Türk kökenli yer örtüsü.", "KIRIŞ": "Yapılarda yük taşıyan yatay destek elemanı.", "KISIR": "Üreme yeteneği olmayan; verimsiz, anlamsız tekrar.", "KIZAK": "Kar ya da buzda kaymak için kullanılan, tahtadan yapılmış araç.", "KIZIL": "Kırmızıya çalan koyu sarı renk; al.", "KIVAM": "Bir maddenin yoğunluğu ya da kıvamı; uygun olgunluk.", "KUMRU": "Güvercingiller ailesinden, güzel sesiyle tanınan küçük kuş türü.", "LİMİT": "Matematikte bir değişkenin yaklaştığı değer; belirlenmiş üst sınır.", "LOKMA": "Bir ağza alınabilecek küçük yiyecek parçası; un, yağ ve şekerden yapılan yuvarlak tatlı.", "LONCA": "Aynı mesleği yürüten ustaları bir araya getiren geleneksel esnaf birliği.", "MAKAM": "Türk müziğindeki dizi ve ezgi sistemi; resmi görev ya da mevki.", "MAPUS": "Halk dilinde hapis ya da tutuklu anlamında kullanılan sözcük.", "MAZOT": "Petrolün damıtılmasıyla elde edilen, dizel motorlarda kullanılan yakıt.", "MELEZ": "İki farklı tür, ırk ya da çeşitten oluşan; karma soydan gelen.", "MEŞRU": "Yasaya ya da ahlak kurallarına uygun olan; haklı ve geçerli.", "MISIR": "Koçan üzerinde sarı daneli, tahıl olarak kullanılan bitki ve meyvesi.", "MÜDÜR": "Bir kurum ya da birimi yöneten, sorumluluğu üstlenen yönetici.", "NAKİL": "Bir şeyi bir yerden başka yere taşıma ya da aktarma; organ nakli.", "NAKİT": "Elden ele geçen madeni ya da kâğıt para; peşin ödeme.", "NAMLU": "Ateşli silahlarda merminin içinden geçerek ilerlediği boru biçimli metal parça.", "NEHİR": "Kaynaktan denize ya da göle dökülen, sürekli akan büyük su yolu.", "NEZİH": "Temiz, namuslu ve iffetli; dürüst ve ahlaklı.", "NİKEL": "Gümüş beyazı renkli, sert ve manyetik metal element.", "NİŞAN": "Evlilik öncesi yapılan nişanlanma töreni; işaret, belirti.", "NÖBET": "Sırayla üstlenilen gözetleme ya da hizmet görevi; hastalıkta nöbet durumu.", "NÜSHA": "Bir kitap ya da belgenin basılmış ya da yazılmış kopyası.", "ÖRNEK": "Bir şeyi açıklamak ya da göstermek için seçilen temsili durum; numune.", "ÖDÜNÇ": "Geri verilmek üzere alınan ya da verilen şey; borç.", "ÖNCÜL": "Önde giden, öncü olan; mantıkta bir çıkarımın dayandığı önerme.", "ÖZGÜN": "Kendine has, orijinal; başkasından kopyalanmamış.", "PARKe": "Tahta levhalar ya da küçük taşlarla döşenen zemin kaplaması.", "PİKAP": "Kasası açık, yük taşımaya uygun hafif kamyonet; plak çalan cihaz.", "PİŞTİ": "İki ile dört kişiyle oynanan, 52 kartlı deste kullanan Türk kâğıt oyunu.", "POLEN": "Çiçekli bitkilerin erkek üreme hücrelerini taşıyan ince toz tanecikleri.", "RACON": "Halk dilinde 'tavır' ve 'ağırlık'; birinin bildiği davranış biçimi.", "RÜTBE": "Askeri ya da sivil hiyerarşideki derece ve konum; paye.", "SAÇAK": "Çatının dışa taşan alt kenarı; dekoratif saçak süsü.", "SAFRA": "Karaciğerin ürettiği ve sindirimi kolaylaştıran sarı-yeşil sıvı.", "SALGI": "Bezlerin üretip salgıladığı sıvı madde; hormon, ter ya da sindirim enzimi.", "SALYA": "Ağız boşluğunda üretilen, sindirimi kolaylaştıran sıvı; tükürük.", "SANİK": "Suçlu olduğundan şüphelenilen ve yargılanan kişi; davalı.", "SEBİL": "Tarihi dönemlerde cadde kenarına yapılan, halka ücretsiz su dağıtan yapı.", "SEHER": "Sabahın en erken vakti; güneş doğmadan hemen önceki alacakaranlık.", "SERÇE": "Küçük ve canlı, yaygın görülen kahverengi kuş türü.", "SERUM": "Kanın pıhtılaşma faktörleri çıkarıldığında kalan sıvı bölümü; damardan verilen sıvı tedavi.", "SİTEM": "Sevgi ile birlikte duyulan hafif kırgınlık ifadesi.", "SÖĞÜŞ": "Haşlanmış ya da pişirilmiş et; soğuk servis edilen et tabağı.", "SÖĞÜT": "Sarkık dallarıyla tanınan, su kenarlarında yetişen ağaç türü.", "SOYUT": "Somut olmayan, yalnızca düşüncede var olan; elle tutulamaz.", "SÜLÜN": "Renkli ve parlak tüyleriyle tanınan, av için yetiştirilen kuş türü.", "SÜREÇ": "Bir olayın ya da işin birbirini izleyen aşamalardan oluşan gelişimi.", "SÜTUN": "Yapılarda yük taşıyan, genellikle silindir biçimli dikey eleman; kolon.", "ŞEHİT": "Vatan ya da dini değerler uğruna hayatını kaybeden kişi.", "ŞÖLEN": "Kutlama amacıyla düzenlenen büyük ve görkemli ziyafet ya da şenlik.", "ŞURUP": "Şeker ve su ile hazırlanan yoğun sıvı; ilaç ya da içecek olarak kullanılır.", "TABLA": "Alçak ayaklı küçük tepsi biçiminde servis tahtası; yuvarlak büyük tepsi.", "TABİP": "Doktor, hekim; tıp alanında eğitim almış sağlık uzmanı.", "TASMA": "Evcil hayvanların boynuna takılan deri ya da naylon bant.", "TİTAN": "Gümüşi beyaz renkli, hafif ve son derece dayanıklı metal element.", "TRİKO": "Örgü tekniğiyle yapılan, elastik ve esnek kumaş ya da bu kumaştan giysi.", "TÜZÜK": "Bir kurum ya da kuruluşun çalışma ilke ve kurallarını düzenleyen resmi belge.", "ULEMA": "İslam hukuku ve ilahiyat alanında uzmanlaşmış din âlimleri topluluğu.", "ÜSLUP": "Bir sanatçı ya da yazara özgü anlatım biçimi ve tarz.", "ÜZGÜN": "Kederli, mutsuz; bir şey için üzüntü duyan.", "VAHİM": "Ciddi tehlike ya da tehdit barındıran, ağır sonuçlar doğurabilecek; endişe verici.", "VAKİF": "Bir konuyu derinlemesine bilen, haberdar olan; hayır amacıyla kurulan hukuki yapı.", "VARİS": "Ölen kişinin yasal mirasçısı; miras üzerinde hak sahibi olan kişi.", "VERİM": "Üretim ya da çalışmadan elde edilen çıktı miktarı; verimlilik.", "YAKUT": "Koyu kırmızı renkli, değerli taş türü; Orta Asya kökenli Türk ismi.", "YALIN": "Süssüz, sade; dilbilgisinde ek almamış isim hali.", "YANKI": "Sesin bir yüzeye çarparak geri dönmesi; bir eylemin toplumsal etkisi.", "YAŞAM": "Canlının doğumdan ölüme kadar süren varoluşu; hayat.", "YAZGI": "Kader, alınyazısı; değiştirilemez olduğuna inanılan gelecek.", "YÖRÜK": "Geleneksel olarak konar-göçer yaşam süren Türkmen oymağı.", "YÜZEY": "Bir cismin dış katmanı ya da sınır yüzeyi; yüzeysel alan.", "TESİS": "Belirli bir amaç için kurulmuş yapı ya da donanım bütünü.", "ABBAS": "Arapçada aslan ya da sert bakışlı anlamına gelen erkek ismi; tarihi İslam halifeliği sülalesi.", "ABİDE": "Tarihi ya da anıtsal nitelik taşıyan büyük yapı; önemli bir eseri simgeleyen anıt.", "AHENK": "Uyum, uygunluk; sesler, renkler ya da biçimler arasındaki düzenli bütünlük.", "BAROK": "17.-18. yüzyıllarda Avrupa'da gelişen, görkemli süsleme ve dramatik etkiyle tanınan sanat akımı.", "BAGET": "Fransız mutfağına özgü, ince ve uzun beyaz ekmek.", "CEMRE": "Halk inanışına göre Şubat sonunda sırasıyla havaya, suya ve toprağa düşen ısı artışı evresi.", "CİLVE": "Nazlı ve alımlı davranış; talih ya da kaderin şaşırtıcı oyunu.", "CİMRİ": "Para harcamaktan aşırı kaçınan, eli sıkı kişi; hasis.", "ÇAĞLA": "Henüz olgunlaşmamış, taze ve yeşil badem ya da kayısı.", "ÇAĞRI": "Bir yere ya da bir şeye davet etme; çağırma eylemi.", "ÇELME": "Birini düşürmek için ayağını takıp kaldırma; güreşte kullanılan teknik.", "ÇEMEN": "Pastırma yapımında kullanılan, sarımsı renkli ve keskin kokulu bitki ve baharat kaplama.", "DAIMA": "Her zaman, sürekli olarak; hiç değişmeksizin.", "DEPAR": "Koşu ya da yarışta başlangıçtaki ani ve hızlı atılış; çıkış hızı.", "DÜŞES": "Dük unvanlı soylunun karısı ya da kendi başına düklük yöneten kadın soylu.", "EFSUN": "Büyü, sihir; insanı etkisi altına alan gizemli güç ya da söz.", "EKOSE": "Kareli ya da çizgili desenli kumaş; İskoç tartan deseninden türeyen doku motifi.", "EMARE": "Bir şeyin var olduğunu ya da olacağını gösteren belirti ya da iz; ipucu.", "ENLEM": "Bir noktanın Ekvator'a olan açısal uzaklığını gösteren coğrafi koordinat.", "FACİA": "Büyük yıkım ve acıya yol açan felaket olayı; trajedi.", "FIKRA": "Güldürü amacıyla anlatılan kısa ve nükteli öykü; gazetede kısa yorum yazısı.", "FIRÇA": "Kıl ya da sentetik telden yapılmış, boya ya da temizlik amacıyla kullanılan araç; azarlama.", "GAMZE": "Yanakta ya da çenede beliren küçük çukurcuk; yüzü güzelleştiren çukur.", "GÜRUH": "Kalabalık ve düzensiz insan topluluğu; izdiham.", "HAŞİN": "Sert ve kaba; davranışları ya da sözleri acı ve sert olan.", "İRFAN": "Derin bilgelik ve manevi olgunluk; gerçeği kavrama yetisi.", "İRONİ": "Söylenenin tam tersini kasteden, zıtlık üzerine kurulu anlatım biçimi.", "KOÇAK": "Anadolu halk edebiyatında yiğitlik ve kahramanlık temalı şiir türü.", "KUDUZ": "Enfekte hayvanın ısırmasıyla bulaşan, sinir sistemini etkileyen ölümcül viral hastalık.", "LAGÜN": "Kıyıya yakın, bir set ya da bariyer adayla açık denizden ayrılmış sığ su kütlesi.", "LEHÇE": "Bir dilin belirli bir coğrafi bölgede ya da toplulukta kullanılan ayrışmış biçimi; diyalekt.", "MAHİR": "Bir işi ustaca yapan, becerikli; usta.", "MAKUL": "Akla uygun, mantıklı; kabul edilebilir.", "MECAZ": "Sözcüğün gerçek anlamı dışında kullanılması; edebi anlam aktarımı.", "NABİZ": "Kalp atışının oluşturduğu, atardamarlarda hissedilen ritmik titreşim.", "NADİR": "Az bulunan, seyrek rastlanan; ender.", "NAĞME": "Güzel ve ahenkli ses; ezgi, melodi.", "NESNE": "Elle tutulabilen somut varlık; dilbilgisinde eylemin üzerine yapıldığı öge.", "NÜANS": "İki şey arasındaki ince fark ya da ayrım; ince ayrıntı.", "SÜKUT": "Derin sessizlik ve suskunluk hali.", "TİKAÇ": "Bir deliği ya da boruyu tıkamak için kullanılan tıpa, mantar ya da plastik kapak.", "TIMAR": "Osmanlı döneminde askeri hizmet karşılığı verilen arazi; at bakımı.", "TÜMEL": "Mantıkta tüm bireyleri kapsayan, geneli ifade eden önerme ya da kavram; evrensel.", "TÜRBE": "Önemli kişilerin mezarları üzerine yapılan anıtsal yapı.", "VAŞAK": "Ormanlarda yaşayan, benekli tüylü ve püsküllü kulaklı orta büyüklükte yaban kedisi.", "VATOZ": "Denizde yaşayan, yassı gövdeli ve uzun zehirli kuyruklu kıkırdaklı balık türü.", "VUKUF": "Bir konuyu derinlemesine bilme ve kavrama yetisi.", "YIKIM": "Bir yapının ya da düzenin çöküşü ya da yıkılması."};
+const FREE_N  = 30;
+
+const MAX_G=6, WL=5, FLIP=250, DELAY=300;
+const KB_ROWS=[
+  ['E','R','T','Y','U','I','O','P','Ğ','Ü'],
+  ['A','S','D','F','G','H','J','K','L','Ş','İ'],
+  ['SİL','Z','C','V','B','N','M','Ö','Ç','GİR']
+];
+
+// ── STATE ──────────────────────────────────────────────────────
+let target,row,col,guess,over,used,grid,mode,archIdx,todayDone;
+
+// ── DATE UTILS ─────────────────────────────────────────────────
+const START = new Date('2026-04-22T00:00:00');
+function todayIdx(){
+  const t=new Date(),d=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+  return Math.max(0,Math.floor((d-START)/86400000)%SCHED.length);
+}
+function todayKey(){const n=new Date();return`5h_${n.getFullYear()}_${n.getMonth()}_${n.getDate()}`}
+function archKey(i){return`5h_arch_${i}`}
+
+// ── SPLASH ─────────────────────────────────────────────────────
+function splash(){
+  document.querySelectorAll('.s-tile').forEach((t,i)=>setTimeout(()=>t.classList.add('in'),400+i*200));
+  setTimeout(()=>document.querySelector('.s-tag').classList.add('in'),1700);
+  setTimeout(()=>{
+    document.getElementById('splash').classList.add('out');
+    document.getElementById('app').classList.add('in');
+    setTimeout(()=>{document.getElementById('splash').style.display='none'},900);
+    setTimeout(()=>switchNav('daily'),350);
+  },2900);
+}
+
+// ── NAV ────────────────────────────────────────────────────────
+let currentInner = 'history';
+
+function switchNav(s){
+  ['daily','archive'].forEach(id=>{
+    const nb = document.getElementById('nav-'+id);
+    if(nb) nb.classList.toggle('active',s===id);
+    const sc = document.getElementById('screen-'+id);
+    if(sc) sc.classList.toggle('hidden',s!==id);
+  });
+  if(s==='daily')   initDaily();
+  if(s==='archive') initArchive();
+}
+
+function switchInner(tab){
+  currentInner = tab;
+  document.getElementById('itab-history').classList.toggle('active', tab==='history');
+  document.getElementById('itab-archive').classList.toggle('active', tab==='archive');
+  document.getElementById('hist-section').style.display = tab==='history' ? 'block' : 'none';
+  document.getElementById('arch-section').style.display = tab==='archive' ? 'block' : 'none';
+  if(tab==='history') renderHistory();
+  if(tab==='archive') renderList();
+}
+
+// ── GEÇMİŞ ────────────────────────────────────────────────────
+const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+function getPastIndices(){
+  const ti = todayIdx();
+  const past = [];
+  for(let i = ti - 1; i >= 0; i--) past.push(i);
+  return past;
+}
+
+function idxToDate(idx){
+  const d = new Date(START.getTime() + idx * 86400000);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+const FREE_HIST = 3;
+
+function renderHistory(){
+  const g = document.getElementById('hist-grid');
+  g.innerHTML = '';
+  const past = getPastIndices();
+  if(past.length === 0){
+    g.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:.82rem;padding:32px 0">Henüz geçmiş gün yok.<br>İlk kelime yarın burada görünür.</div>';
+    return;
+  }
+  past.forEach(function(idx, position){
+    const d = new Date(START.getTime() + idx * 86400000);
+    const key = '5h_' + d.getFullYear() + '_' + d.getMonth() + '_' + d.getDate();
+    const saved = localStorage.getItem(key);
+    const done = saved ? JSON.parse(saved).done : false;
+    const won  = saved ? JSON.parse(saved).won  : false;
+    const locked = position >= FREE_HIST && !isPremium();
+    const c = document.createElement('div');
+    c.className = 'hist-card ' + (locked ? 'unplayed' : (done ? (won ? 'won' : 'lost') : 'unplayed'));
+    const parts = idxToDate(idx).split(' ');
+    const day = parts[0], mon = parts[1];
+    if(locked){
+      c.style.opacity = '0.45';
+      c.innerHTML = '<span class="hist-date">' + mon + '<br>' + day + '</span><span class="arch-lock">🔒</span>';
+      c.onclick = function(){ openPaywall('Geçmiş Günler', 'İlk 3 gün ücretsiz! Diğerleri için 5harf Premium gerekmektedir.'); };
+    } else {
+      c.innerHTML = '<span class="hist-date">' + mon + '<br>' + day + '</span>';
+      c.onclick = (function(i){ return function(){ playHistory(i); }; })(idx);
+    }
+    g.appendChild(c);
+  });
+}
+function playHistory(idx){
+  mode = 'history'; archIdx = idx;
+  closeDrawer(true);
+  target = SCHED[idx];
+  row=0;col=0;guess=[];over=false;used={};grid=[];
+  document.getElementById('arch-list-wrap').style.display = 'none';
+  document.getElementById('arch-game-wrap').style.display = 'flex';
+  document.getElementById('arch-label').textContent = idxToDate(idx);
+  document.getElementById('back-btn-label').textContent = '← Geçmiş';
+  buildGrid('grid-archive'); buildKb('kb-archive');
+  requestAnimationFrame(()=>{
+    const d = new Date(START.getTime() + idx * 86400000);
+    const key = `5h_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
+    const saved = localStorage.getItem(key);
+    if(saved){
+      const st = JSON.parse(saved);
+      replayGuesses(st.guesses); updateKb('kb-archive');
+      if(st.done){ over=true; setTimeout(()=>showDrawer(st.won), 600); }
+    }
+  });
+}
+
+// ── GÜNLÜK ─────────────────────────────────────────────────────
+function initDaily(){
+  mode='daily';
+  target=SCHED[todayIdx()];
+  row=0;col=0;guess=[];over=false;used={};grid=[];todayDone=false;
+  buildGrid('grid-daily');buildKb('kb-daily');
+  closeDrawer(true);
+  const saved=localStorage.getItem(todayKey());
+  if(saved){
+    const st=JSON.parse(saved);
+    replayGuesses(st.guesses);updateKb('kb-daily');
+    if(st.done){over=true;todayDone=true;setTimeout(()=>showDrawer(st.won),600)}
+  }
+}
+
+// ── ARŞİV LİSTE ────────────────────────────────────────────────
+function initArchive(){
+  mode='archive';
+  closeDrawer(true);
+  document.getElementById('arch-list-wrap').style.display='flex';
+  document.getElementById('arch-game-wrap').style.display='none';
+  // varsayılan iç sekme: geçmiş
+  switchInner(currentInner);
+}
+
+function renderList(){
+  const g=document.getElementById('arch-grid');g.innerHTML='';
+  ARCHIVE.forEach(function(w,i){
+    const locked=i>=FREE_N&&!isPremium();
+    const saved=localStorage.getItem(archKey(i));
+    const done=saved?JSON.parse(saved).done:false;
+    const won=saved?JSON.parse(saved).won:false;
+    const c=document.createElement('div');
+    c.className='arch-card'+(locked?' locked':'')+(done?(won?' won':' lost'):'');
+    if(locked){
+      c.innerHTML='<span class="arch-num">#'+(i+1)+'</span><span class="arch-lock">🔒</span>';
+      c.style.cursor='pointer';c.style.opacity='0.45';
+      c.onclick=(function(n){ return function(){ openPaywall('Arşiv Premium','#'+n+'. bölüm ve sonrası Premium içerik. Tüm 130 bölüme erişin!'); }; })(i+1);
+    }else{
+      c.innerHTML='<span class="arch-num">#'+(i+1)+'</span><span class="arch-status">'+(done?(won?'✓':'✗'):'→')+'</span>';
+      c.onclick=(function(n){ return function(){ playArchive(n); }; })(i);
+    }
+    g.appendChild(c);
+  });
+}
+// ── ARŞİV OYUN ─────────────────────────────────────────────────
+function playArchive(i){
+  mode='archive';archIdx=i;
+  closeDrawer(true);
+  target=ARCHIVE[i];
+  row=0;col=0;guess=[];over=false;used={};grid=[];
+  document.getElementById('arch-list-wrap').style.display='none';
+  document.getElementById('arch-game-wrap').style.display='flex';
+  document.getElementById('arch-label').textContent=`Arşiv #${i+1}`;
+  document.getElementById('back-btn-label').textContent='← Arşiv';
+  buildGrid('grid-archive');buildKb('kb-archive');
+  requestAnimationFrame(()=>{
+    const saved=localStorage.getItem(archKey(i));
+    if(saved){
+      const st=JSON.parse(saved);
+      replayGuesses(st.guesses);updateKb('kb-archive');
+      if(st.done){over=true;setTimeout(()=>showDrawer(st.won),600)}
+    }
+  });
+}
+
+function backToList(){
+  closeDrawer(true);
+  document.getElementById('arch-list-wrap').style.display='flex';
+  document.getElementById('arch-game-wrap').style.display='none';
+  document.getElementById('back-btn-label').textContent='← Arşiv';
+  if(currentInner==='history') renderHistory();
+  else renderList();
+}
+
+// ── GRID & KB ──────────────────────────────────────────────────
+function buildGrid(id){
+  const el=document.getElementById(id);el.innerHTML='';grid=[];
+  for(let r=0;r<MAX_G;r++){
+    const row=document.createElement('div');row.className='row';
+    const tiles=[];
+    for(let c=0;c<WL;c++){const t=document.createElement('div');t.className='tile';row.appendChild(t);tiles.push(t)}
+    el.appendChild(row);grid.push(tiles);
+  }
+}
+
+function buildKb(id){
+  const kb=document.getElementById(id);kb.innerHTML='';
+  KB_ROWS.forEach(r=>{
+    const row=document.createElement('div');row.className='kb-row';
+    r.forEach(k=>{
+      const b=document.createElement('button');
+      b.className='key'+(k.length>1?' wide':'');
+      b.textContent=k;b.dataset.k=k;
+      b.addEventListener('click',()=>handleKey(k));
+      row.appendChild(b);
+    });
+    kb.appendChild(row);
+  });
+}
+
+// ── INPUT ──────────────────────────────────────────────────────
+function handleKey(k){
+  if(over)return;
+  if(k==='SİL'||k==='BACKSPACE')delLetter();
+  else if(k==='GİR'||k==='ENTER')submit();
+  else if([...k].length===1)addLetter(k.toUpperCase());
+}
+
+function addLetter(l){
+  if(col>=WL)return;
+  const t=grid[row][col];
+  t.textContent=l;t.dataset.s='tbd';
+  t.classList.remove('pop');void t.offsetWidth;t.classList.add('pop');
+  t.addEventListener('animationend',()=>t.classList.remove('pop'),{once:true});
+  guess.push(l);col++;
+}
+
+function delLetter(){
+  if(!col)return;
+  col--;guess.pop();
+  const t=grid[row][col];t.textContent='';delete t.dataset.s;
+}
+
+function submit(){
+  if(col<WL){shakeRow();return}
+  const w=guess.join('');
+  if(!VALID.has(w)){shakeRow();return}
+  revealRow(w);
+}
+
+// ── REVEAL ─────────────────────────────────────────────────────
+function revealRow(w){
+  const tgt=[...target],gArr=[...w];
+  const res=Array(WL).fill('absent'),cnt={};
+  tgt.forEach(l=>cnt[l]=(cnt[l]||0)+1);
+  gArr.forEach((l,i)=>{if(l===tgt[i]){res[i]='correct';cnt[l]--}});
+  gArr.forEach((l,i)=>{if(res[i]!=='correct'&&cnt[l]>0){res[i]='present';cnt[l]--}});
+  res.forEach((r,i)=>{
+    const t=grid[row][i];
+    setTimeout(()=>{
+      t.style.transition=`transform ${FLIP}ms ease-in`;t.style.transform='scaleY(0)';
+      setTimeout(()=>{t.dataset.s=r;t.style.transition=`transform ${FLIP}ms ease-out`;t.style.transform='scaleY(1)'},FLIP);
+    },i*DELAY);
+    const prev=used[gArr[i]];
+    if(!prev||prev==='absent'||(prev==='present'&&r==='correct'))used[gArr[i]]=r;
+  });
+  const total=(WL-1)*DELAY+FLIP*2+220;
+  setTimeout(()=>{
+    const kbId=mode==='daily'?'kb-daily':'kb-archive';
+    updateKb(kbId);
+    const won=res.every(r=>r==='correct');
+    row++;
+    saveProgress(won||row>=MAX_G,won);
+    if(won){
+      grid[row-1].forEach((t,i)=>setTimeout(()=>{
+        t.classList.add('bounce');t.addEventListener('animationend',()=>t.classList.remove('bounce'),{once:true});
+      },i*100));
+      over=true;if(mode==='daily')todayDone=true;
+      setTimeout(()=>showDrawer(true),750);
+    }else{
+      col=0;guess=[];
+      if(row>=MAX_G){
+        over=true;if(mode==='daily')todayDone=true;
+        setTimeout(()=>showDrawer(false),450);
+      }
+    }
+  },total);
+}
+
+function replayGuesses(gs){
+  gs.forEach(w=>{
+    const gArr=[...w],tgt=[...target];
+    const res=Array(WL).fill('absent'),cnt={};
+    tgt.forEach(l=>cnt[l]=(cnt[l]||0)+1);
+    gArr.forEach((l,i)=>{if(l===tgt[i]){res[i]='correct';cnt[l]--}});
+    gArr.forEach((l,i)=>{if(res[i]!=='correct'&&cnt[l]>0){res[i]='present';cnt[l]--}});
+    gArr.forEach((l,i)=>{
+      grid[row][i].textContent=l;grid[row][i].dataset.s=res[i];
+      const prev=used[l];if(!prev||prev==='absent'||(prev==='present'&&res[i]==='correct'))used[l]=res[i];
+    });
+    row++;
+  });
+  col=0;guess=[];
+}
+
+function updateKb(id){
+  document.getElementById(id).querySelectorAll('.key').forEach(b=>{
+    const s=used[b.dataset.k];if(s)b.dataset.s=s;
+  });
+}
+
+function shakeRow(){
+  grid[row].forEach(t=>{
+    t.classList.remove('invalid');void t.offsetWidth;t.classList.add('invalid');
+    t.addEventListener('animationend',()=>t.classList.remove('invalid'),{once:true});
+  });
+}
+
+// ── SAVE ───────────────────────────────────────────────────────
+function histDateKey(idx){
+  const d=new Date(START.getTime()+idx*86400000);
+  return`5h_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
+}
+
+function saveProgress(done,won){
+  const gs=[];
+  for(let r=0;r<row;r++)gs.push(grid[r].map(t=>t.textContent).join(''));
+  const st={guesses:gs,done,won};
+  if(mode==='daily'){
+    localStorage.setItem(todayKey(),JSON.stringify(st));
+    if(done)updateStats(won);
+  }else if(mode==='history'){
+    // Geçmiş: o günün tarih key'ine kaydet
+    localStorage.setItem(histDateKey(archIdx),JSON.stringify(st));
+  }else{
+    localStorage.setItem(archKey(archIdx),JSON.stringify(st));
+  }
+}
+
+function updateStats(won){
+  let s=JSON.parse(localStorage.getItem('5h_stats')||'{"p":0,"w":0,"str":0,"max":0,"d":[0,0,0,0,0,0]}');
+  s.p++;
+  if(won){s.w++;s.str++;s.max=Math.max(s.max,s.str);s.d[row-1]++}
+  else s.str=0;
+  localStorage.setItem('5h_stats',JSON.stringify(s));
+}
+
+// ── DRAWER ─────────────────────────────────────────────────────
+function showDrawer(won){
+  const idx=mode==='daily'?todayIdx():archIdx;
+  const lbl=mode==='daily'?`Gün #${idx+1}`:mode==='history'?idxToDate(idx):`Arşiv #${idx+1}`;
+  document.getElementById('d-label').textContent=lbl;
+  document.getElementById('d-meta').textContent=won?`${row}. denemede buldun ✦`:'Bir dahaki sefere —';
+  document.getElementById('d-word').textContent=target;
+  document.getElementById('d-meaning').textContent=MEANINGS[target]||'—';
+
+  const acts=document.getElementById('d-actions');acts.innerHTML='';
+  if(mode==='history'){
+    const bb=document.createElement('button');
+    bb.className='btn-g';bb.textContent='← Geçmiş';
+    bb.onclick=()=>{closeDrawer(true);currentInner='history';backToList()};
+    acts.appendChild(bb);
+  }else if(mode==='archive'){
+    const nextIdx=archIdx+1;
+    if(nextIdx<FREE_N){
+      const nb=document.createElement('button');
+      nb.className='btn-p rose';nb.textContent='Sonraki →';
+      nb.onclick=()=>{closeDrawer(true);playArchive(nextIdx)};
+      acts.appendChild(nb);
+    }
+    const bb=document.createElement('button');
+    bb.className='btn-g';bb.textContent='← Arşiv';
+    bb.onclick=()=>{closeDrawer(true);backToList()};
+    acts.appendChild(bb);
+  }else{
+    const ab=document.createElement('button');
+    ab.className='btn-p rose';ab.textContent='Arşive Git →';
+    ab.onclick=()=>{document.getElementById('drawer').classList.remove('open');switchNav('archive')};
+    acts.appendChild(ab);
+    const cb=document.createElement('button');
+    cb.className='btn-g';cb.textContent='Kapat';
+    cb.onclick=()=>closeDrawer();
+    acts.appendChild(cb);
+  }
+  document.getElementById('drawer').classList.add('open');
+}
+
+function closeDrawer(force=false){
+  if(!force&&mode==='daily'&&todayDone)return;
+  document.getElementById('drawer').classList.remove('open');
+}
+
+// ── İSTATİSTİK ─────────────────────────────────────────────────
+function openStats(){
+  const s=JSON.parse(localStorage.getItem('5h_stats')||'{"p":0,"w":0,"str":0,"max":0,"d":[0,0,0,0,0,0]}');
+  const pct=s.p?Math.round(s.w/s.p*100):0;
+
+  document.getElementById('stats-numbers').innerHTML=`
+    <div class="stat-item"><span class="stat-num">${s.p}</span><span class="stat-lbl">Oynadı</span></div>
+    <div class="stat-item"><span class="stat-num">${pct}%</span><span class="stat-lbl">Kazanma %</span></div>
+    <div class="stat-item"><span class="stat-num">${s.str}</span><span class="stat-lbl">Seri</span></div>
+    <div class="stat-item"><span class="stat-num">${s.max}</span><span class="stat-lbl">En İyi Seri</span></div>
+  `;
+
+  const maxD=Math.max(...s.d,1);
+  // Mevcut row'u bul
+  const savedToday=localStorage.getItem(todayKey());
+  const curRow=savedToday?JSON.parse(savedToday).guesses.length:0;
+
+  document.getElementById('stats-dist').innerHTML=s.d.map((v,i)=>{
+    const pct=Math.round(v/maxD*100);
+    const isCur=savedToday&&JSON.parse(savedToday).won&&curRow===i+1;
+    return`<div class="dist-row">
+      <span class="dist-num">${i+1}</span>
+      <div class="dist-bar-wrap">
+        <div class="dist-bar${isCur?' present':''}" style="width:${Math.max(pct,4)}%">
+          <span>${v}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('stats-modal').classList.add('open');
+}
+
+function closeStats(){document.getElementById('stats-modal').classList.remove('open')}
+
+// ── KURALLAR ───────────────────────────────────────────────────
+function openHelp(){document.getElementById('help-modal').classList.add('open')}
+function closeHelp(){
+  document.getElementById('help-modal').classList.remove('open');
+  localStorage.setItem('5h_seen','1');
+}
+function checkFirstLaunch(){
+  if(!localStorage.getItem('5h_seen'))setTimeout(openHelp,3200);
+}
+
+// ── KLAVYE ─────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.altKey||e.metaKey)return;
+  if(e.key==='Backspace')handleKey('SİL');
+  else if(e.key==='Enter')handleKey('GİR');
+  else if(e.key.length===1)handleKey(e.key.toUpperCase());
+});
+document.getElementById('stats-modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('stats-modal'))closeStats();
+});
+document.getElementById('help-modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('help-modal'))closeHelp();
+});
+
+
+// ── PAYWALL ─────────────────────────────────────────────────────
+function openPaywall(titleText, descText){
+  if(titleText) document.getElementById('pw-title').textContent = titleText;
+  if(descText)  document.getElementById('pw-desc').textContent  = descText;
+  document.getElementById('paywall-modal').classList.add('open');
+}
+function closePaywall(){
+  document.getElementById('paywall-modal').classList.remove('open');
+}
+function purchasePremium(){
+  if(confirm('5harf Premium — ₺129 tek seferlik ödeme. Devam edilsin mi?')){
+    localStorage.setItem('5h_premium','1');
+    closePaywall();
+    if(typeof currentInner !== 'undefined' && currentInner === 'history') renderHistory();
+    else renderList();
+    alert('🎉 Premium aktif! Tüm içeriklere erişebilirsiniz.');
+  }
+}
+function restorePurchase(){
+  if(isPremium()){
+    closePaywall();
+    alert('Satın almanız zaten aktif.');
+  } else {
+    alert('Aktif bir satın alma bulunamadı.');
+  }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('paywall-modal').addEventListener('click', function(e){
+    if(e.target === document.getElementById('paywall-modal')) closePaywall();
+  });
+});
+
+splash();
+checkFirstLaunch();
+</script>
+
+<!-- PAYWALL MODAL -->
+<div id="paywall-modal">
+  <div class="pw-box">
+    <div class="pw-close-row"><button class="pw-close" onclick="closePaywall()">&#x2715;</button></div>
+    <div class="pw-icon">&#x1F511;</div>
+    <div class="pw-title" id="pw-title">5harf Premium</div>
+    <div class="pw-desc" id="pw-desc">Tüm arşiv ve geçmiş günlere erişmek için premium gerekiyor.</div>
+    <div class="pw-features">
+      <div class="pw-feat"><span class="pw-feat-icon">&#x1F4C5;</span><span>Tüm geçmiş günlere sınırsız erişim</span></div>
+      <div class="pw-feat"><span class="pw-feat-icon">&#x1F5C4;&#xFE0F;</span><span>130 arşiv bölümünün tamamı</span></div>
+      <div class="pw-feat"><span class="pw-feat-icon">&#x1F4CA;</span><span>Detaylı istatistikler</span></div>
+      <div class="pw-feat"><span class="pw-feat-icon">&#x2705;</span><span>Tek seferlik ödeme, ömür boyu erişim</span></div>
+    </div>
+    <div class="pw-price-box">
+      <div>
+        <div class="pw-price-label">5harf Premium</div>
+        <div class="pw-price-sub">Tek seferlik &mdash; sonsuza kadar</div>
+      </div>
+      <div>
+        <div class="pw-price-amount">&#x20BA;129</div>
+        <div class="pw-price-once">bir kerelik</div>
+      </div>
+    </div>
+    <button class="pw-btn" onclick="purchasePremium()">&#x20BA;129 ile Premium Al</button>
+    <button class="pw-restore" onclick="restorePurchase()">Satın almayı geri yükle</button>
+  </div>
+</div>
+</body>
+</html>
