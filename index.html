@@ -978,82 +978,131 @@ document.getElementById('help-modal').addEventListener('click',e=>{
 
 
 // ── GOOGLE PLAY BILLING ─────────────────────────────────────────
-// Ürün ID'si: Play Console'da tanımlayacağın SKU ile eşleşmeli
 const PREMIUM_SKU = '5harf_premium';
-
-// TWA içinde mi çalışıyor?
-function isInTWA(){
-  return document.referrer.includes('android-app://') ||
-         navigator.userAgent.includes('wv') ||
-         window.getDigitalGoodsService !== undefined;
-}
+const BILLING_METHOD = 'https://play.google.com/billing';
+const DEBUG_BILLING = true;   // sorun çözülünce false yap
 
 let dgService = null;
 
+function isInTWA(){
+  return 'getDigitalGoodsService' in window;
+}
+
 async function initBilling(){
-  if(!isInTWA()) return; // Web'de çalışıyorsa atla
-  try {
-    if('getDigitalGoodsService' in window){
-      dgService = await window.getDigitalGoodsService('https://play.google.com/billing');
-    }
-  } catch(e){
-    console.warn('Play Billing init hatası:', e);
+  if(!isInTWA()){
+    console.log('[billing] Digital Goods API yok — web modu');
+    return;
   }
+  try {
+    dgService = await window.getDigitalGoodsService(BILLING_METHOD);
+    console.log('[billing] servis hazır');
+  } catch(e){
+    console.error('[billing] init başarısız:', e);
+    dgService = null;
+  }
+}
+
+function billingError(e, btn){
+  console.error('[billing]', e);
+  if(e && e.name === 'AbortError') return;          // kullanıcı iptal etti
+  const msg = DEBUG_BILLING
+    ? 'Hata: ' + (e && e.name ? e.name : '?') + ' — ' + (e && e.message ? e.message : e)
+    : 'Satın alma sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+  alert(msg);
+  resetBtn(btn);
+}
+
+function resetBtn(btn){
+  if(btn){ btn.textContent = '\u20BA69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
 }
 
 async function purchasePremium(){
   const btn = document.getElementById('pw-main-btn');
   if(btn){ btn.textContent = 'Yükleniyor…'; btn.classList.add('pw-btn-loading'); }
 
-  // TWA / Play Store içindeyse gerçek IAP
-  if(isInTWA() && dgService){
-    try {
-      // Ürün detaylarını al
-      const details = await dgService.getDetails([PREMIUM_SKU]);
-      if(!details || details.length === 0) throw new Error('Ürün bulunamadı');
+  // Sadece localhost'ta simülasyon
+  if(location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
+    setTimeout(()=>{ grantPremium(); }, 600);
+    return;
+  }
 
-      // PaymentRequest ile ödeme başlat
-      const paymentMethod = {
-        supportedMethods: 'https://play.google.com/billing',
-        data: { sku: PREMIUM_SKU }
-      };
-      const pr = new PaymentRequest([paymentMethod], {
-        total: { label: '5harf Premium', amount: { currency: 'TRY', value: '69' } }
-      });
-      const paymentResponse = await pr.show();
+  if(!isInTWA()){
+    alert('Bu özellik yalnızca Google Play uygulaması üzerinden satın alınabilir.');
+    resetBtn(btn);
+    return;
+  }
 
-      // Sunucu tarafı doğrulama (production'da backend'e gönder)
-      // Şimdilik token'ı acknowledge et
-      await paymentResponse.complete('success');
-      await dgService.acknowledge(paymentResponse.details.token, 'onetime');
-
-      // Başarılı — premium'u aç
-      localStorage.setItem('5h_premium','1');
-      closePaywall();
-      _premiumActivated();
-    } catch(e){
-      console.error('Satın alma hatası:', e);
-      if(e.name !== 'AbortError'){
-        alert('Satın alma sırasında bir hata oluştu. Lütfen tekrar deneyin.');
-      }
-      if(btn){ btn.textContent = '₺69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
+  if(!dgService){
+    await initBilling();
+    if(!dgService){
+      alert('Google Play bağlantısı kurulamadı. Uygulamayı kapatıp tekrar açmayı deneyin.');
+      resetBtn(btn);
+      return;
     }
+  }
+
+  try {
+    const details = await dgService.getDetails([PREMIUM_SKU]);
+    if(!details || details.length === 0){
+      throw new Error('Ürün bulunamadı: ' + PREMIUM_SKU + ' (Play Console\'da Active mi?)');
+    }
+    const item = details[0];
+
+    const pr = new PaymentRequest(
+      [{ supportedMethods: BILLING_METHOD, data: { sku: item.itemId } }],
+      { total: { label: item.title || '5harf Premium',
+                 amount: { currency: item.price.currency, value: item.price.value } } }
+    );
+
+    const response = await pr.show();
+    const token = response.details.token;
+
+    // Önce ürünü teslim et, sonra ödemeyi kapat
+    if(typeof dgService.consume === 'function'){
+      await dgService.consume(token);
+    } else if(typeof dgService.acknowledge === 'function'){
+      await dgService.acknowledge(token, 'onetime');
+    }
+    await response.complete('success');
+
+    grantPremium();
+  } catch(e){
+    billingError(e, btn);
+  }
+}
+
+async function restorePurchase(){
+  if(isPremium()){
+    closePaywall();
+    alert('Satın almanız zaten aktif. \u2713');
     return;
   }
 
-  // Web / test ortamı — geliştirme modu simülasyonu
-  if(window.location.hostname === 'localhost' || window.location.hostname.includes('github.io')){
-    setTimeout(()=>{
-      localStorage.setItem('5h_premium','1');
-      closePaywall();
-      _premiumActivated();
-    }, 800);
+  if(!isInTWA()){
+    alert('Aktif bir satın alma bulunamadı.');
     return;
   }
 
-  // Ne TWA ne de geliştirme — kullanıcıya yönlendir
-  alert('Bu özellik yalnızca Google Play uygulaması üzerinden satın alınabilir.');
-  if(btn){ btn.textContent = '₺69 ile Premium Al'; btn.classList.remove('pw-btn-loading'); }
+  if(!dgService) await initBilling();
+  if(!dgService){
+    alert('Google Play bağlantısı kurulamadı.');
+    return;
+  }
+
+  try {
+    const purchases = await dgService.listPurchases();
+    const found = purchases.some(p => p.itemId === PREMIUM_SKU);
+    if(found){ grantPremium(); return; }
+    alert('Aktif bir satın alma bulunamadı.');
+  } catch(e){
+    billingError(e, null);
+  }
+}
+
+function grantPremium(){
+  localStorage.setItem('5h_premium','1');
+  closePaywall();
+  _premiumActivated();
 }
 
 async function restorePurchase(){
