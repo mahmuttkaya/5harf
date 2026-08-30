@@ -1105,31 +1105,6 @@ function grantPremium(){
   _premiumActivated();
 }
 
-async function restorePurchase(){
-  if(isPremium()){
-    closePaywall();
-    alert('Satın almanız zaten aktif. ✓');
-    return;
-  }
-
-  // TWA içindeyse Play'den kontrol et
-  if(isInTWA() && dgService){
-    try {
-      const existing = await dgService.listPurchases();
-      const hasPremium = existing.some(p => p.itemId === PREMIUM_SKU);
-      if(hasPremium){
-        localStorage.setItem('5h_premium','1');
-        closePaywall();
-        _premiumActivated();
-        return;
-      }
-    } catch(e){
-      console.error('Restore hatası:', e);
-    }
-  }
-  alert('Aktif bir satın alma bulunamadı.');
-}
-
 function _premiumActivated(){
   if(typeof currentInner !== 'undefined' && currentInner === 'history') renderHistory();
   else renderList();
